@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import { Search, Building2, Bot, CalendarCheck, Plus, Check, Mail, Calendar } from "lucide-react";
 import { useBusiness } from "../context/BusinessContext";
 import EmpresaCard from "../components/dashboard/EmpresaCard";
@@ -39,22 +38,22 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8 min-w-0 w-full">
       {/* Header del Dashboard */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="font-display text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">
             Mis Negocios
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-xs sm:text-sm text-slate-500">
             Gestiona el bot de WhatsApp, los horarios y las cuentas de Google Calendar.
           </p>
         </div>
 
         {/* Acciones principales & Stats */}
-        <div className="flex flex-wrap items-center gap-3">
-          <button onClick={() => setIsModalOpen(true)} className="btn-primary">
-            <Plus size={18} /> Agregar Negocio
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+          <button onClick={() => setIsModalOpen(true)} className="btn-primary w-full sm:w-auto text-xs sm:text-sm py-2.5">
+            <Plus size={16} /> Agregar Negocio
           </button>
 
           <div className="hidden xl:flex items-center gap-3">
@@ -81,43 +80,43 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Barra de Filtro y Buscador en móvil/tablet */}
-      <div className="flex items-center justify-between gap-4">
+      {/* Barra de Filtro y Contador */}
+      <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
           Comercios Registrados ({empresasFiltradas.length})
         </p>
 
-        <div className="relative w-full max-w-xs sm:hidden">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <div className="relative w-full max-w-[200px] sm:hidden">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar..."
-            className="input-base pl-9 py-2 text-xs"
+            className="input-base pl-8 py-1.5 text-xs"
           />
         </div>
       </div>
 
       {/* Lista de Comercios */}
       {empresasFiltradas.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center">
+        <div className="rounded-3xl border border-dashed border-slate-300 bg-white/70 p-8 sm:p-12 text-center">
           <Building2 size={36} className="mx-auto text-slate-300 mb-3" />
-          <p className="text-base font-medium text-slate-800">
+          <p className="text-sm sm:text-base font-medium text-slate-800">
             No se encontraron negocios para "{searchQuery}"
           </p>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-xs sm:text-sm text-slate-500">
             Intenta buscar con otro nombre, rubro o número de teléfono.
           </p>
           <button
             onClick={() => setSearchQuery("")}
-            className="btn-secondary mt-4"
+            className="btn-secondary mt-4 text-xs"
           >
             Limpiar búsqueda
           </button>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3.5 sm:space-y-4">
           {empresasFiltradas.map((empresa) => (
             <EmpresaCard
               key={empresa.id}
@@ -135,7 +134,7 @@ export default function DashboardPage() {
         onClose={() => setIsModalOpen(false)}
         title="Registrar Nuevo Comercio"
       >
-        <form onSubmit={handleCrearNegocio} className="space-y-4">
+        <form onSubmit={handleCrearNegocio} className="space-y-3.5 sm:space-y-4">
           <div>
             <label className="label-base">Nombre del Comercio</label>
             <input
@@ -176,38 +175,38 @@ export default function DashboardPage() {
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="label-base mb-0">Correo vinculado a Google Calendar</label>
-              <span className="text-[11px] text-brand-600 font-semibold flex items-center gap-1">
+            <div className="flex items-center justify-between mb-1">
+              <label className="label-base mb-0">Correo Google Calendar</label>
+              <span className="text-[10px] sm:text-[11px] text-brand-600 font-semibold flex items-center gap-1">
                 <Calendar size={12} /> Sync Automático
               </span>
             </div>
             <div className="relative">
-              <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <input
                 type="email"
                 required
                 value={nuevoNegocio.googleCalendarEmail}
                 onChange={(e) => setNuevoNegocio({ ...nuevoNegocio, googleCalendarEmail: e.target.value })}
                 placeholder="agenda.negocio@gmail.com"
-                className="input-base pl-10"
+                className="input-base pl-9 sm:pl-10"
               />
             </div>
-            <p className="mt-1.5 text-[11px] text-slate-500 leading-normal">
-              La cuenta de Google Calendar donde el bot agendará y consultará la disponibilidad en tiempo real.
+            <p className="mt-1 text-[10px] sm:text-[11px] text-slate-500 leading-normal">
+              La cuenta donde el bot consultará y bloqueará la disponibilidad.
             </p>
           </div>
 
-          <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100">
+          <div className="mt-5 flex justify-end gap-2.5 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="btn-secondary text-xs"
+              className="btn-secondary text-xs py-2 px-4"
             >
               Cancelar
             </button>
-            <button type="submit" className="btn-primary text-xs">
-              <Check size={16} /> Crear Comercio
+            <button type="submit" className="btn-primary text-xs py-2 px-4">
+              <Check size={15} /> Crear Comercio
             </button>
           </div>
         </form>

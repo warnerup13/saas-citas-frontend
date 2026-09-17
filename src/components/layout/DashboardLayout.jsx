@@ -10,22 +10,22 @@ export default function DashboardLayout() {
   const { toast, showToast } = useBusiness();
 
   return (
-    <div className="min-h-screen bg-slate-50/60 font-sans">
-      {/* Sidebar Fija en Desktop */}
+    <div className="min-h-screen min-h-[100dvh] bg-slate-50/60 font-sans relative overflow-x-hidden">
+      {/* Sidebar Fija en Desktop y Drawer en Móvil */}
       <Sidebar
         isMobileOpen={isMobileSidebarOpen}
         setIsMobileOpen={setIsMobileSidebarOpen}
       />
 
       {/* Área Contenido Principal con margen a la izquierda en lg */}
-      <div className="flex min-h-screen flex-col lg:pl-64">
+      <div className="flex min-h-screen min-h-[100dvh] flex-col lg:pl-64 min-w-0 w-full">
         {/* Topbar Superior */}
         <Topbar
           onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
         />
 
-        {/* Render de las subpáginas con animación de desvanecimiento */}
-        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto">
+        {/* Render de las subpáginas */}
+        <main className="flex-1 p-3.5 sm:p-6 md:p-8 max-w-7xl w-full mx-auto min-w-0">
           <Outlet />
         </main>
       </div>

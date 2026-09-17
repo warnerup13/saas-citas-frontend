@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
   Bot,
   Power,
@@ -8,14 +7,12 @@ import {
   Clock,
   ExternalLink,
   LogOut,
-  Sparkles,
   CheckCircle2,
   CalendarDays,
   Plus,
   Trash2,
   Smartphone,
   Info,
-  Zap,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useBusiness } from "../context/BusinessContext";
@@ -94,76 +91,78 @@ export default function MerchantPortalPage() {
   ];
 
   return (
-    <div className="min-h-screen text-slate-900 font-sans pb-20 selection:bg-brand-500 selection:text-white">
+    <div className="min-h-screen text-slate-900 font-sans pb-20 selection:bg-brand-500 selection:text-white overflow-x-hidden">
       <Toast toast={toast} />
 
       {/* Header del Portal de Comercio Nova Glass */}
-      <header className="sticky top-0 z-40 border-b border-white/80 bg-white/70 backdrop-blur-2xl">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 sm:px-6 py-3.5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-400 text-white font-bold shadow-glow-blue">
-              <Bot size={22} />
+      <header className="sticky top-0 z-40 border-b border-white/80 bg-white/75 backdrop-blur-2xl">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-3 sm:px-6 py-3 sm:py-3.5 gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-400 text-white font-bold shadow-glow-blue">
+              <Bot size={20} className="sm:w-[22px] sm:h-[22px]" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-display font-bold text-slate-900 text-base">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="font-display font-bold text-slate-900 text-sm sm:text-base truncate">
                   {empresaActual?.nombre || user?.name}
                 </span>
-                <span className="glass-pill-cyan text-[10px]">
+                <span className="glass-pill-cyan text-[9px] sm:text-[10px] shrink-0">
                   PORTAL COMERCIO
                 </span>
               </div>
-              <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5 font-medium">
-                <Smartphone size={12} className="text-emerald-600" />
-                WhatsApp: <strong>{empresaActual?.telefono || "+57 310 000 0000"}</strong>
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-[11px] sm:text-xs text-slate-500 flex items-center gap-1.5 mt-0.5 font-medium truncate">
+                <Smartphone size={11} className="text-emerald-600 shrink-0" />
+                <span className="truncate">{empresaActual?.telefono || "+57 310 000 0000"}</span>
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => window.open("https://calendar.google.com", "_blank")}
-              className="btn-secondary text-xs py-2 px-3.5"
+              className="btn-secondary text-xs py-1.5 sm:py-2 px-2.5 sm:px-3.5"
+              aria-label="Abrir Google Calendar"
             >
-              <Calendar size={14} className="text-brand-600" />
+              <Calendar size={13} className="text-brand-600" />
               <span className="hidden sm:inline">Google Calendar</span>
-              <ExternalLink size={12} className="text-slate-400" />
+              <ExternalLink size={11} className="text-slate-400" />
             </button>
 
             <button
               onClick={handleLogout}
-              className="btn-danger text-xs py-2 px-3.5"
+              className="btn-danger text-xs py-1.5 sm:py-2 px-2.5 sm:px-3.5"
+              aria-label="Cerrar sesión"
             >
-              <LogOut size={14} />
-              <span className="hidden sm:inline">Cerrar Sesión</span>
+              <LogOut size={13} />
+              <span className="hidden sm:inline">Salir</span>
             </button>
           </div>
         </div>
       </header>
 
       {/* Contenido Principal */}
-      <main className="mx-auto max-w-5xl px-4 sm:px-6 pt-8 space-y-8">
+      <main className="mx-auto max-w-5xl px-3.5 sm:px-6 pt-6 sm:pt-8 space-y-6 sm:space-y-8 min-w-0">
         
         {/* ============================================================ */}
         {/* 1. INTERRUPTOR MAESTRO DEL BOT NOVA GLASS */}
         {/* ============================================================ */}
         <section>
           <div
-            className={`rounded-3xl border p-6 sm:p-8 transition-all duration-300 shadow-glass-lg relative overflow-hidden ${
+            className={`rounded-3xl border p-5 sm:p-8 transition-all duration-300 shadow-glass-lg relative overflow-hidden ${
               empresaActual?.activo
                 ? "bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border-emerald-500/40 text-white"
                 : "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20 text-white"
             }`}
           >
             {/* Resplandor ambiental interno */}
-            <div className={`absolute -right-20 -top-20 h-64 w-64 rounded-full blur-3xl pointer-events-none ${
+            <div className={`absolute -right-20 -top-20 h-56 sm:h-64 w-56 sm:w-64 rounded-full blur-3xl pointer-events-none ${
               empresaActual?.activo ? "bg-emerald-500/20" : "bg-amber-500/10"
             }`} />
 
-            <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+            <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5 sm:gap-6">
               <div className="space-y-2">
-                <div className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-bold uppercase tracking-wider bg-white/10 backdrop-blur-md border border-white/20">
+                <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full px-3 py-1 text-[11px] sm:text-xs font-bold uppercase tracking-wider bg-white/10 backdrop-blur-md border border-white/20">
                   {empresaActual?.activo ? (
                     <>
                       <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -177,10 +176,10 @@ export default function MerchantPortalPage() {
                   )}
                 </div>
 
-                <h1 className="text-2xl sm:text-3xl font-display font-extrabold tracking-tight">
+                <h1 className="text-xl sm:text-3xl font-display font-extrabold tracking-tight leading-tight">
                   {empresaActual?.activo
-                    ? "El Bot está atendiendo y agendando citas en tiempo real"
-                    : "El Bot está pausado y no agendará citas en este momento"}
+                    ? "El Bot está atendiendo y agendando citas"
+                    : "El Bot está pausado y no agendará citas"}
                 </h1>
 
                 <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
@@ -191,16 +190,16 @@ export default function MerchantPortalPage() {
               </div>
 
               {/* Botón Switch Principal */}
-              <div className="shrink-0 flex items-center">
+              <div className="shrink-0 flex items-center w-full sm:w-auto">
                 <button
                   onClick={handleToggleBot}
-                  className={`group relative flex items-center gap-3 rounded-2xl px-6 py-4 font-extrabold text-sm sm:text-base transition-all duration-200 shadow-lg active:scale-95 border ${
+                  className={`group relative flex items-center justify-center gap-2.5 sm:gap-3 rounded-2xl px-5 sm:px-6 py-3.5 sm:py-4 font-extrabold text-xs sm:text-base transition-all duration-200 shadow-lg active:scale-95 border w-full sm:w-auto ${
                     empresaActual?.activo
                       ? "bg-gradient-to-r from-emerald-400 to-teal-300 hover:from-emerald-300 hover:to-teal-200 text-slate-950 border-emerald-200 shadow-[0_0_25px_rgba(52,211,153,0.4)]"
                       : "bg-slate-800 hover:bg-slate-700 text-white border-white/20 shadow-black/20"
                   }`}
                 >
-                  <Power size={22} className={empresaActual?.activo ? "text-slate-950" : "text-amber-400"} />
+                  <Power size={20} className={empresaActual?.activo ? "text-slate-950" : "text-amber-400"} />
                   <span>{empresaActual?.activo ? "BOT ENCENDIDO" : "BOT APAGADO"}</span>
                 </button>
               </div>
@@ -211,68 +210,68 @@ export default function MerchantPortalPage() {
         {/* ============================================================ */}
         {/* 2. SECCIÓN GOOGLE CALENDAR NOVA GLASS */}
         {/* ============================================================ */}
-        <section className="glass-panel p-6 sm:p-7">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200/60">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-400 text-white shadow-glow-blue">
-                <CalendarDays size={22} />
+        <section className="glass-panel p-4 sm:p-7">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 sm:pb-5 border-b border-slate-200/60">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-400 text-white shadow-glow-blue">
+                <CalendarDays size={20} className="sm:w-[22px] sm:h-[22px]" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-display font-bold text-slate-900">
+                  <h2 className="text-base sm:text-lg font-display font-bold text-slate-900">
                     Tu Google Calendar
                   </h2>
                   <span className="glass-pill-cyan text-[10px]">
-                    <CheckCircle2 size={11} className="text-cyan-600" /> Sincronizado
+                    <CheckCircle2 size={11} className="text-cyan-600" /> Sync
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Vinculado a: <strong className="text-brand-700">{empresaActual?.googleCalendarEmail || "agenda@gmail.com"}</strong>
+                <p className="text-xs text-slate-500 mt-0.5 truncate">
+                  Vinculado: <strong className="text-brand-700">{empresaActual?.googleCalendarEmail || "agenda@gmail.com"}</strong>
                 </p>
               </div>
             </div>
 
             <button
               onClick={() => window.open("https://calendar.google.com", "_blank")}
-              className="btn-primary text-xs sm:text-sm py-2.5 px-4 self-start sm:self-auto"
+              className="btn-primary text-xs sm:text-sm py-2 px-4 self-start sm:self-auto"
             >
-              <Calendar size={15} />
+              <Calendar size={14} />
               Ver en Google Calendar
-              <ExternalLink size={13} />
+              <ExternalLink size={12} />
             </button>
           </div>
 
           {/* Citas sincronizadas */}
-          <div className="mt-5">
-            <h3 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+          <div className="mt-4 sm:mt-5">
+            <h3 className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 sm:mb-3">
               Próximas citas sincronizadas en tu agenda:
             </h3>
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-2.5 sm:gap-3 sm:grid-cols-3">
               {citasHoyCalendar.map((cita, idx) => (
                 <div
                   key={idx}
-                  className="rounded-2xl border border-white/90 bg-white/70 p-4 shadow-xs hover:bg-white hover:shadow-glass transition-all"
+                  className="rounded-2xl border border-white/90 bg-white/70 p-3.5 sm:p-4 shadow-xs hover:bg-white hover:shadow-glass transition-all"
                 >
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-1.5 sm:mb-2">
                     <span className="glass-pill-brand text-[10px] font-bold py-0.5 px-2">
                       <Clock size={11} />
                       {cita.hora}
                     </span>
-                    <span className="text-[11px] text-emerald-600 font-bold">
+                    <span className="text-[10px] sm:text-[11px] text-emerald-600 font-bold">
                       ● Sync OK
                     </span>
                   </div>
-                  <p className="text-sm font-bold text-slate-900">{cita.servicio}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">Cliente: {cita.cliente}</p>
+                  <p className="text-xs sm:text-sm font-bold text-slate-900 truncate">{cita.servicio}</p>
+                  <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 truncate">Cliente: {cita.cliente}</p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-4 rounded-2xl bg-cyan-50/70 border border-cyan-200/70 p-3.5 flex items-start gap-2.5 text-xs text-cyan-900">
-              <Info size={16} className="text-cyan-600 shrink-0 mt-0.5" />
-              <span>
-                <strong>Tip de automatización:</strong> Cualquier compromiso personal o bloqueo que agregues en tu Google Calendar hará que el bot respete ese espacio y no ofrezca ese horario a los clientes.
+            <div className="mt-3.5 sm:mt-4 rounded-2xl bg-cyan-50/70 border border-cyan-200/70 p-3 sm:p-3.5 flex items-start gap-2.5 text-xs text-cyan-900">
+              <Info size={15} className="text-cyan-600 shrink-0 mt-0.5" />
+              <span className="leading-relaxed">
+                <strong>Tip de automatización:</strong> Cualquier compromiso personal o bloqueo en tu Google Calendar hará que el bot respete ese espacio y no ofrezca ese horario a los clientes.
               </span>
             </div>
           </div>
@@ -281,9 +280,9 @@ export default function MerchantPortalPage() {
         {/* ============================================================ */}
         {/* 3. CONTROL DE HORARIOS Y DÍAS */}
         {/* ============================================================ */}
-        <section className="glass-panel p-6 sm:p-7">
-          <div className="pb-5 border-b border-slate-200/60">
-            <h2 className="text-lg font-display font-bold text-slate-900">
+        <section className="glass-panel p-4 sm:p-7">
+          <div className="pb-4 sm:pb-5 border-b border-slate-200/60">
+            <h2 className="text-base sm:text-lg font-display font-bold text-slate-900">
               Horarios y Días de Atención
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
@@ -291,7 +290,7 @@ export default function MerchantPortalPage() {
             </p>
           </div>
 
-          <div className="mt-6 space-y-3">
+          <div className="mt-4 sm:mt-6 space-y-2.5 sm:space-y-3">
             {DIAS_SEMANA.map((dia) => {
               const config = empresaActual?.horario?.[dia.clave] || {
                 abre: true,
@@ -302,7 +301,7 @@ export default function MerchantPortalPage() {
               return (
                 <div
                   key={dia.clave}
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border p-4 transition-all ${
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 rounded-2xl border p-3 sm:p-4 transition-all ${
                     config.abre
                       ? "border-white/90 bg-white/70 shadow-xs"
                       : "border-slate-200/50 bg-slate-100/50 opacity-70"
@@ -324,22 +323,22 @@ export default function MerchantPortalPage() {
                       />
                     </button>
                     <div>
-                      <span className="text-sm font-bold text-slate-900">
+                      <span className="text-xs sm:text-sm font-bold text-slate-900">
                         {dia.nombre}
                       </span>
                       <span
-                        className={`ml-2 text-xs font-semibold ${
+                        className={`ml-2 text-[11px] sm:text-xs font-semibold ${
                           config.abre ? "text-emerald-600" : "text-slate-400"
                         }`}
                       >
-                        {config.abre ? "Abierto (Bot agenda)" : "Cerrado (Bot pausa)"}
+                        {config.abre ? "Abierto" : "Cerrado"}
                       </span>
                     </div>
                   </div>
 
                   {/* Horario Desde / Hasta */}
                   {config.abre ? (
-                    <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-xs pl-14 sm:pl-0">
                       <span className="text-slate-500 font-semibold">Desde:</span>
                       <input
                         type="time"
@@ -347,7 +346,7 @@ export default function MerchantPortalPage() {
                         onChange={(e) =>
                           handleCambioDia(dia.clave, true, e.target.value, config.hasta)
                         }
-                        className="rounded-xl border border-white bg-white/80 px-2.5 py-1.5 font-bold text-slate-800 outline-none focus:border-brand-500"
+                        className="rounded-xl border border-white bg-white/90 px-2 py-1 font-bold text-slate-800 outline-none focus:border-brand-500 text-xs shadow-xs"
                       />
                       <span className="text-slate-500 font-semibold">Hasta:</span>
                       <input
@@ -356,12 +355,12 @@ export default function MerchantPortalPage() {
                         onChange={(e) =>
                           handleCambioDia(dia.clave, true, config.desde, e.target.value)
                         }
-                        className="rounded-xl border border-white bg-white/80 px-2.5 py-1.5 font-bold text-slate-800 outline-none focus:border-brand-500"
+                        className="rounded-xl border border-white bg-white/90 px-2 py-1 font-bold text-slate-800 outline-none focus:border-brand-500 text-xs shadow-xs"
                       />
                     </div>
                   ) : (
-                    <span className="text-xs text-slate-400 italic">
-                      El bot informará que este día no hay servicio
+                    <span className="text-xs text-slate-400 italic pl-14 sm:pl-0">
+                      El bot pausará reservas este día
                     </span>
                   )}
                 </div>
@@ -371,11 +370,11 @@ export default function MerchantPortalPage() {
         </section>
 
         {/* ============================================================ */}
-        {/* 4. DÍAS DE CIERRE TEMPORAL (FESTIVOS / VACACIONES) */}
+        {/* 4. DÍAS DE CIERRE TEMPORAL */}
         {/* ============================================================ */}
-        <section className="glass-panel p-6 sm:p-7">
-          <div className="pb-5 border-b border-slate-200/60">
-            <h2 className="text-lg font-display font-bold text-slate-900">
+        <section className="glass-panel p-4 sm:p-7">
+          <div className="pb-4 sm:pb-5 border-b border-slate-200/60">
+            <h2 className="text-base sm:text-lg font-display font-bold text-slate-900">
               Días Cerrados por Festivos o Vacaciones
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
@@ -386,7 +385,7 @@ export default function MerchantPortalPage() {
           {/* Formulario */}
           <form
             onSubmit={handleAgregarCierre}
-            className="mt-5 grid gap-3 sm:grid-cols-12 items-end bg-white/60 border border-white/90 p-4 rounded-2xl shadow-xs"
+            className="mt-4 sm:mt-5 grid gap-3 sm:grid-cols-12 items-end bg-white/60 border border-white/90 p-3.5 sm:p-4 rounded-2xl shadow-xs"
           >
             <div className="sm:col-span-4">
               <label className="label-base">
@@ -409,7 +408,7 @@ export default function MerchantPortalPage() {
                 type="text"
                 value={nuevoCierreMotivo}
                 onChange={(e) => setNuevoCierreMotivo(e.target.value)}
-                placeholder="Ej. Aniversario, Festivo, Capacitación"
+                placeholder="Ej. Aniversario, Festivo, Vacaciones"
                 className="input-base text-xs py-2"
               />
             </div>
@@ -426,26 +425,26 @@ export default function MerchantPortalPage() {
           </form>
 
           {/* Lista de cierres programados */}
-          <div className="mt-5 space-y-2.5">
+          <div className="mt-4 sm:mt-5 space-y-2.5">
             {(!empresaActual?.cierres || empresaActual.cierres.length === 0) ? (
-              <p className="text-xs text-slate-400 italic py-2">
+              <p className="text-xs text-slate-400 italic py-2 text-center sm:text-left">
                 No tienes días cerrados especiales programados.
               </p>
             ) : (
               empresaActual.cierres.map((cierre) => (
                 <div
                   key={cierre.id}
-                  className="flex items-center justify-between rounded-2xl border border-amber-200/80 bg-amber-50/70 p-3.5"
+                  className="flex items-center justify-between rounded-2xl border border-amber-200/80 bg-amber-50/70 p-3 sm:p-3.5 min-w-0"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-800 font-bold">
-                      <Calendar size={15} />
+                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 pr-2">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 font-bold">
+                      <Calendar size={14} />
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs font-bold text-slate-900">
                         {cierre.fecha}
                       </p>
-                      <p className="text-xs text-amber-900 font-medium">
+                      <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate">
                         {cierre.motivo || "Cerrado"}
                       </p>
                     </div>
@@ -453,8 +452,9 @@ export default function MerchantPortalPage() {
 
                   <button
                     onClick={() => eliminarCierre(empresaActual.id, cierre.id)}
-                    className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                     title="Eliminar día cerrado"
+                    aria-label="Eliminar día cerrado"
                   >
                     <Trash2 size={15} />
                   </button>

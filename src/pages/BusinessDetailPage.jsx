@@ -37,9 +37,9 @@ export default function BusinessDetailPage() {
 
   if (!empresa) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center">
+      <div className="rounded-3xl border border-slate-200 bg-white/80 p-8 sm:p-12 text-center">
         <p className="text-base font-semibold text-slate-900">Comercio no encontrado</p>
-        <button onClick={() => navigate("/dashboard")} className="btn-primary mt-4">
+        <button onClick={() => navigate("/dashboard")} className="btn-primary mt-4 text-xs">
           Volver a la lista
         </button>
       </div>
@@ -80,7 +80,7 @@ export default function BusinessDetailPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6 min-w-0 w-full">
       {/* Botón Volver */}
       <button
         onClick={() => navigate("/dashboard")}
@@ -90,10 +90,10 @@ export default function BusinessDetailPage() {
       </button>
 
       {/* Header del Comercio */}
-      <div className="card-base flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-serif text-3xl font-normal text-slate-900">
+      <div className="card-base flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-center lg:justify-between min-w-0">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 truncate max-w-full">
               {empresa.nombre}
             </h1>
             <span className={empresa.activo ? "badge-active" : "badge-inactive"}>
@@ -101,31 +101,33 @@ export default function BusinessDetailPage() {
             </span>
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-500">
-            <span className="flex items-center gap-1.5"><Scissors size={14} /> {empresa.rubro}</span>
-            <span className="flex items-center gap-1.5"><Phone size={14} /> {empresa.telefono}</span>
-            <span className="flex items-center gap-1.5 text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-100 font-medium">
-              <CalendarCheck size={13} className="text-blue-600" />
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1.5 text-xs text-slate-500">
+            <span className="flex items-center gap-1.5 font-medium"><Scissors size={13} /> {empresa.rubro}</span>
+            <span className="flex items-center gap-1.5 font-medium"><Phone size={13} /> {empresa.telefono}</span>
+            <span className="flex items-center gap-1 text-cyan-700 bg-cyan-50/80 px-2 py-0.5 rounded-lg border border-cyan-200/60 font-semibold text-[11px] truncate max-w-full">
+              <CalendarCheck size={12} className="text-cyan-600 shrink-0" />
               Calendar: {empresa.googleCalendarEmail || "Sin vincular"}
             </span>
-            <span className="flex items-center gap-1.5 font-medium text-slate-700">
-              <CalendarCheck size={14} className="text-brand-600" /> {empresa.citasSemana} citas esta semana
+            <span className="flex items-center gap-1.5 font-bold text-slate-700">
+              <CalendarCheck size={13} className="text-brand-600" /> {empresa.citasSemana} citas esta semana
             </span>
           </div>
         </div>
 
         {/* Card de activación rápida del Bot */}
-        <div className={`flex items-center gap-4 rounded-2xl p-4 border transition-colors ${
+        <div className={`flex items-center justify-between sm:justify-start gap-3 rounded-2xl p-3 sm:p-4 border transition-colors shrink-0 ${
           empresa.activo ? "bg-emerald-50/70 border-emerald-200/60" : "bg-slate-100/70 border-slate-200"
         }`}>
-          <Power size={20} className={empresa.activo ? "text-emerald-600" : "text-slate-400"} />
-          <div>
-            <p className="text-xs font-semibold text-slate-900">
-              {empresa.activo ? "El bot está respondiendo" : "El bot está en pausa"}
-            </p>
-            <p className="text-[11px] text-slate-500">
-              {empresa.activo ? "Atiende y agenda automáticamente" : "Mensajes quedan sin responder"}
-            </p>
+          <div className="flex items-center gap-3">
+            <Power size={18} className={empresa.activo ? "text-emerald-600" : "text-slate-400"} />
+            <div>
+              <p className="text-xs font-semibold text-slate-900">
+                {empresa.activo ? "Bot respondiendo" : "Bot en pausa"}
+              </p>
+              <p className="text-[10px] sm:text-[11px] text-slate-500">
+                {empresa.activo ? "Atiende y agenda citas" : "Sin respuestas"}
+              </p>
+            </div>
           </div>
           <BotToggle
             activo={empresa.activo}
@@ -136,7 +138,7 @@ export default function BusinessDetailPage() {
       </div>
 
       {/* Navegación por Pestañas */}
-      <div className="flex border-b border-slate-200">
+      <div className="flex border-b border-slate-200/80 overflow-x-auto">
         {[
           { id: "servicios", label: `Servicios (${empresa.servicios.length})` },
           { id: "disponibilidad", label: "Horarios y Días Cerrados" },
@@ -144,8 +146,8 @@ export default function BusinessDetailPage() {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`relative px-5 py-3 text-sm font-medium transition-colors ${
-              tab === t.id ? "text-brand-600 font-semibold" : "text-slate-500 hover:text-slate-900"
+            className={`relative px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
+              tab === t.id ? "text-brand-600 font-bold" : "text-slate-500 hover:text-slate-900"
             }`}
           >
             {t.label}
@@ -159,24 +161,24 @@ export default function BusinessDetailPage() {
       {/* Pestaña 1: Servicios */}
       {tab === "servicios" && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <p className="text-xs text-slate-500">
               El bot utiliza la duración de cada servicio para calcular los horarios libres en Google Calendar.
             </p>
             {!creandoServicio && !editandoServicio && (
-              <button onClick={() => setCreandoServicio(true)} className="btn-primary text-xs">
-                <Plus size={16} /> Agregar Servicio
+              <button onClick={() => setCreandoServicio(true)} className="btn-primary text-xs self-start sm:self-auto py-2">
+                <Plus size={15} /> Agregar Servicio
               </button>
             )}
           </div>
 
           {/* Formulario Crear/Editar */}
           {(creandoServicio || editandoServicio) && (
-            <form onSubmit={handleGuardarServicio} className="card-base bg-slate-50/80 space-y-4">
-              <h3 className="text-sm font-semibold text-slate-900">
+            <form onSubmit={handleGuardarServicio} className="card-base bg-white/80 space-y-3.5 sm:space-y-4">
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900">
                 {editandoServicio ? "Editar Servicio" : "Nuevo Servicio"}
               </h3>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
                   <label className="label-base">Nombre del Servicio</label>
                   <input
@@ -221,9 +223,9 @@ export default function BusinessDetailPage() {
                   />
                 </div>
               </div>
-              <div className="flex gap-3">
-                <button type="submit" className="btn-primary text-xs">
-                  <Check size={16} /> Guardar Servicio
+              <div className="flex gap-2.5 pt-2">
+                <button type="submit" className="btn-primary text-xs py-2 px-4">
+                  <Check size={15} /> Guardar Servicio
                 </button>
                 <button
                   type="button"
@@ -231,7 +233,7 @@ export default function BusinessDetailPage() {
                     setCreandoServicio(false);
                     setEditandoServicio(null);
                   }}
-                  className="btn-secondary text-xs"
+                  className="btn-secondary text-xs py-2 px-4"
                 >
                   Cancelar
                 </button>
@@ -240,34 +242,43 @@ export default function BusinessDetailPage() {
           )}
 
           {/* Lista de Servicios */}
-          <div className="grid gap-3">
+          <div className="grid gap-2.5 sm:gap-3">
             {empresa.servicios.map((s) => (
               <div
                 key={s.id}
-                className="card-base flex items-center justify-between p-4"
+                className="card-base flex items-center justify-between p-3.5 sm:p-4 gap-3 min-w-0"
               >
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{s.nombre}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {s.duracion} min · <strong className="text-slate-700">{money(s.precio)}</strong>
-                    {s.nota ? ` · ${s.nota}` : ""}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs sm:text-sm font-bold text-slate-900 truncate">{s.nombre}</p>
+                  <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-1.5">
+                    <span>{s.duracion} min</span>
+                    <span>·</span>
+                    <strong className="text-brand-700 font-bold">{money(s.precio)}</strong>
+                    {s.nota && (
+                      <>
+                        <span>·</span>
+                        <span className="truncate max-w-[180px] sm:max-w-xs">{s.nota}</span>
+                      </>
+                    )}
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => {
                       setEditandoServicio(s.id);
                       setFormServicio(s);
                     }}
-                    className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 transition-colors"
+                    className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 transition-colors"
+                    aria-label={`Editar ${s.nombre}`}
                   >
-                    <Pencil size={16} />
+                    <Pencil size={15} />
                   </button>
                   <button
                     onClick={() => eliminarServicio(empresa.id, s.id)}
-                    className="rounded-lg p-2 text-red-500 hover:bg-red-50 transition-colors"
+                    className="rounded-lg p-1.5 text-red-500 hover:bg-red-50 transition-colors"
+                    aria-label={`Eliminar ${s.nombre}`}
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={15} />
                   </button>
                 </div>
               </div>
@@ -282,43 +293,43 @@ export default function BusinessDetailPage() {
           {/* Horario Semanal */}
           <div className="card-base space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-slate-900">Horario Semanal</h3>
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 font-display">Horario Semanal</h3>
               <p className="text-xs text-slate-500">Los días desactivados no serán ofrecidos por el bot.</p>
             </div>
             <div className="space-y-3">
               {DIAS.map((d) => {
                 const h = empresa.horario[d.key];
                 return (
-                  <div key={d.key} className="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <div key={d.key} className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
                     <div className="flex items-center gap-3">
                       <BotToggle
                         activo={h.abre}
                         onChange={(v) => setHorarioDia(d.key, { abre: v })}
                         ariaLabel={`Horario ${d.label}`}
                       />
-                      <span className={`text-sm font-medium ${h.abre ? "text-slate-900" : "text-slate-400"}`}>
+                      <span className={`text-xs sm:text-sm font-semibold ${h.abre ? "text-slate-900" : "text-slate-400"}`}>
                         {d.label}
                       </span>
                     </div>
 
                     {h.abre ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 text-xs pl-11 xs:pl-0">
                         <input
                           type="time"
                           value={h.desde}
                           onChange={(e) => setHorarioDia(d.key, { desde: e.target.value })}
-                          className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-800"
+                          className="rounded-xl border border-white bg-white/90 px-2 py-1 text-xs text-slate-800 font-semibold shadow-xs"
                         />
-                        <span className="text-xs text-slate-400">a</span>
+                        <span className="text-slate-400 font-medium">a</span>
                         <input
                           type="time"
                           value={h.hasta}
                           onChange={(e) => setHorarioDia(d.key, { hasta: e.target.value })}
-                          className="rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-800"
+                          className="rounded-xl border border-white bg-white/90 px-2 py-1 text-xs text-slate-800 font-semibold shadow-xs"
                         />
                       </div>
                     ) : (
-                      <span className="text-xs font-semibold text-slate-400">Cerrado</span>
+                      <span className="text-xs font-semibold text-slate-400 pl-11 xs:pl-0">Cerrado</span>
                     )}
                   </div>
                 );
@@ -329,7 +340,7 @@ export default function BusinessDetailPage() {
           {/* Días Cerrados Puntuales */}
           <div className="card-base space-y-4">
             <div>
-              <h3 className="text-base font-semibold text-slate-900">Días Cerrados Programados</h3>
+              <h3 className="text-sm sm:text-base font-bold text-slate-900 font-display">Días Cerrados Programados</h3>
               <p className="text-xs text-slate-500">Agrega festivos, vacaciones o eventos especiales.</p>
             </div>
 
@@ -354,8 +365,8 @@ export default function BusinessDetailPage() {
                   className="input-base"
                 />
               </div>
-              <button type="submit" className="btn-secondary text-xs w-full">
-                <Plus size={16} /> Marcar Día Cerrado
+              <button type="submit" className="btn-secondary text-xs w-full py-2">
+                <Plus size={15} /> Marcar Día Cerrado
               </button>
             </form>
 
@@ -364,14 +375,15 @@ export default function BusinessDetailPage() {
                 <p className="text-xs text-slate-400 text-center py-4">No hay días cerrados programados.</p>
               ) : (
                 empresa.cierres.map((c) => (
-                  <div key={c.id} className="flex items-center justify-between rounded-xl bg-amber-50 p-3 border border-amber-200/60">
-                    <div>
-                      <p className="text-xs font-semibold text-amber-900">{fechaLarga(c.fecha)}</p>
-                      <p className="text-xs text-amber-700">{c.motivo}</p>
+                  <div key={c.id} className="flex items-center justify-between rounded-xl bg-amber-50/80 p-3 border border-amber-200/60">
+                    <div className="min-w-0 flex-1 pr-2">
+                      <p className="text-xs font-bold text-amber-900">{fechaLarga(c.fecha)}</p>
+                      <p className="text-xs text-amber-700 truncate">{c.motivo}</p>
                     </div>
                     <button
                       onClick={() => eliminarCierre(empresa.id, c.id)}
-                      className="text-amber-700 hover:text-amber-900 p-1"
+                      className="text-amber-700 hover:text-amber-900 p-1 rounded-lg shrink-0"
+                      aria-label="Eliminar día cerrado"
                     >
                       <X size={16} />
                     </button>
