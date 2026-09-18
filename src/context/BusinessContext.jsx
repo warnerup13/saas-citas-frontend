@@ -1,37 +1,48 @@
 import { createContext, useContext, useState } from "react";
 import { DATA_INICIAL } from "../data/mockData";
 import { uid } from "../utils/formatters";
+import { useToast } from "./ToastContext";
 
 const BusinessContext = createContext();
 
 export function BusinessProvider({ children }) {
   const [empresas, setEmpresas] = useState(DATA_INICIAL);
   const [searchQuery, setSearchQuery] = useState("");
-  const [toast, setToast] = useState(null);
+  const { toast } = useToast();
 
   const showToast = (mensaje, tipo = "success") => {
-    setToast({ mensaje, tipo });
-    setTimeout(() => setToast(null), 3500);
+    if (tipo === "error") {
+      toast.error(mensaje);
+    } else if (tipo === "info") {
+      toast.info(mensaje);
+    } else if (tipo === "warning") {
+      toast.warning(mensaje);
+    } else {
+      toast.success(mensaje);
+    }
   };
 
   // Alternar el estado activo del bot para una empresa
-  const toggleBotEmpresa = (id, nuevoEstado) => {
+  const toggleBotEmpresa = (id, nuevoEstado, silent = false) => {
     setEmpresas((prev) =>
       prev.map((emp) => {
         if (emp.id === id) {
           const val = nuevoEstado !== undefined ? nuevoEstado : !emp.activo;
-          showToast(
-            val
-              ? `Bot activado para ${emp.nombre}`
-              : `Bot en pausa para ${emp.nombre}`,
-            val ? "success" : "info"
-          );
+          if (!silent) {
+            showToast(
+              val
+                ? `Bot activado para ${emp.nombre}`
+                : `Bot en pausa para ${emp.nombre}`,
+              val ? "success" : "info"
+            );
+          }
           return { ...emp, activo: val };
         }
         return emp;
       })
     );
   };
+
 
   // Agregar nuevo comercio
   const agregarEmpresa = (nueva) => {
@@ -67,12 +78,14 @@ export function BusinessProvider({ children }) {
     showToast(`Comercio "${emp?.nombre}" eliminado`, "info");
   };
 
-  // Actualizar cualquier propiedad parcial de una empresa
-  const actualizarEmpresa = (id, patch) => {
+  // Actualizar cualquier propiedad parcial de una empresa (silencioso por defecto)
+  const actualizarEmpresa = (id, patch, silent = true) => {
     setEmpresas((prev) =>
       prev.map((emp) => (emp.id === id ? { ...emp, ...patch } : emp))
     );
-    showToast("Cambios guardados correctamente");
+    if (!silent) {
+      showToast("Cambios guardados correctamente");
+    }
   };
 
   // Agregar servicio a una empresa

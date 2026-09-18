@@ -2,12 +2,9 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
-import Toast from "../common/Toast";
-import { useBusiness } from "../../context/BusinessContext";
 
 export default function DashboardLayout() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const { toast, showToast } = useBusiness();
 
   return (
     <div className="min-h-screen min-h-[100dvh] bg-slate-50/60 font-sans relative overflow-x-hidden">
@@ -29,9 +26,7 @@ export default function DashboardLayout() {
           <Outlet />
         </main>
       </div>
-
-      {/* Toast de notificaciones globales */}
-      <Toast toast={toast} onClose={() => showToast(null)} />
     </div>
   );
 }
+

@@ -1,9 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Phone, Scissors, Power, Plus, Pencil, Trash2, CalendarOff, Check, X, CalendarCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  Phone,
+  Scissors,
+  Power,
+  Plus,
+  Pencil,
+  Trash2,
+  Check,
+  X,
+  CalendarCheck,
+  Save,
+  RefreshCw,
+} from "lucide-react";
 import { useBusiness } from "../context/BusinessContext";
+import { useToast } from "../context/ToastContext";
 import BotToggle from "../components/common/BotToggle";
 import { money, fechaLarga, DIAS, uid } from "../utils/formatters";
+import { servicesService, settingsService } from "../services";
 
 export default function BusinessDetailPage() {
   const { id } = useParams();
@@ -16,12 +31,14 @@ export default function BusinessDetailPage() {
     agregarCierre,
     eliminarCierre,
   } = useBusiness();
+  const { toast } = useToast();
 
-  const empresa = empresas.find((e) => e.id === Number(id));
+  const empresa = empresas.find((e) => e.id === Number(id) || String(e.id) === String(id));
 
   const [tab, setTab] = useState("servicios");
   const [creandoServicio, setCreandoServicio] = useState(false);
   const [editandoServicio, setEditandoServicio] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Form state para nuevos servicios
   const [formServicio, setFormServicio] = useState({
@@ -35,39 +52,153 @@ export default function BusinessDetailPage() {
   const [fechaCierre, setFechaCierre] = useState("");
   const [motivoCierre, setMotivoCierre] = useState("");
 
+  // Cargar servicios desde el backend si corresponde al comercio autenticado
+  useEffect(() => {
+    async function loadBackendServices() {
+      try {
+        const res = await servicesService.getServices();
+        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+          const mapped = res.data.map((s) => ({
+            id: s.id,
+            nombre: s.name,
+            duracion: s.duration_minutes,
+            precio: Number(s.price),
+            nota: s.is_active ? "Servicio Activo" : "Pausado en Bot",
+            is_active: s.is_active,
+          }));
+          actualizarEmpresa(empresa.id, { servicios: mapped });
+        }
+      } catch (err) {
+        console.log("Carga servicios backend omitida o en modo local:", err?.message);
+      }
+    }
+
+    if (empresa) {
+      loadBackendServices();
+    }
+  }, [id]);
+
   if (!empresa) {
     return (
       <div className="rounded-3xl border border-slate-200 bg-white/80 p-8 sm:p-12 text-center">
         <p className="text-base font-semibold text-slate-900">Comercio no encontrado</p>
-        <button onClick={() => navigate("/dashboard")} className="btn-primary mt-4 text-xs">
+        <button onClick={() => navigate("/dashboard")} className="btn-primary mt-4 text-xs cursor-pointer">
           Volver a la lista
         </button>
       </div>
     );
   }
 
-  const handleGuardarServicio = (e) => {
-    e.preventDefault();
-    if (!formServicio.nombre.trim()) return;
-    agregarServicio(empresa.id, {
-      ...formServicio,
-      id: formServicio.id || uid(),
-    });
-    setFormServicio({ nombre: "", duracion: 30, precio: 0, nota: "" });
-    setCreandoServicio(false);
-    setEditandoServicio(null);
+  const handleToggleBot = async (val) => {
+    actualizarEmpresa(empresa.id, { activo: val });
+    // try {
+    //   const res = await settingsService.updateBotStatus(val);
+    //   toast.success(
+    //     res.message || (val ? `Bot activado para ${empresa.nombre}` : `Bot en pausa para ${empresa.nombre}`),
+    //     { titulo: val ? "Bot Encendido" : "Bot en Pausa" }
+    //   );
+    // } catch (err) {
+    //   toast.error(err, {
+    //     titulo: "Error al actualizar estado del Bot",
+    //   });
+    // }
   };
 
-  const handleAgregarCierre = (e) => {
+  const handleGuardarServicio = async (e) => {
     e.preventDefault();
-    if (!fechaCierre) return;
-    agregarCierre(empresa.id, {
+    if (!formServicio.nombre.trim()) {
+      toast.warning("El nombre del servicio es obligatorio");
+      return;
+    }
+
+    setIsSaving(true);
+    const nuevoItem = {
+      id: formServicio.id || uid(),
+      nombre: formServicio.nombre.trim(),
+      duracion: Number(formServicio.duracion) || 30,
+      precio: Number(formServicio.precio) || 0,
+      nota: formServicio.nota || "",
+      is_active: true,
+    };
+
+    try {
+      const res = await servicesService.createService({
+        name: nuevoItem.nombre,
+        duration_minutes: nuevoItem.duracion,
+        price: nuevoItem.precio,
+        is_active: true,
+      });
+
+      if (res.data?.id) {
+        nuevoItem.id = res.data.id;
+      }
+
+      agregarServicio(empresa.id, nuevoItem);
+      toast.success(res.message || "Servicio registrado exitosamente en el catálogo.", {
+        titulo: "Servicio Guardado",
+      });
+    } catch (err) {
+      // Guardar en estado local y mostrar toast detallado
+      agregarServicio(empresa.id, nuevoItem);
+      toast.error(err, {
+        titulo: "Fallo al guardar servicio en API",
+      });
+    } finally {
+      setIsSaving(false);
+      setFormServicio({ nombre: "", duracion: 30, precio: 0, nota: "" });
+      setCreandoServicio(false);
+      setEditandoServicio(null);
+    }
+  };
+
+  const handleAgregarCierre = async (e) => {
+    e.preventDefault();
+    if (!fechaCierre) {
+      toast.warning("Selecciona una fecha");
+      return;
+    }
+
+    const motivoTexto = motivoCierre.trim() || "Cerrado";
+    const nuevoCierre = {
       id: uid(),
       fecha: fechaCierre,
-      motivo: motivoCierre.trim() || "Cerrado",
-    });
-    setFechaCierre("");
-    setMotivoCierre("");
+      motivo: motivoTexto,
+    };
+
+    try {
+      const res = await settingsService.createHoliday({
+        date: fechaCierre,
+        reason: motivoTexto,
+      });
+      if (res.data?.id) {
+        nuevoCierre.id = res.data.id;
+      }
+      agregarCierre(empresa.id, nuevoCierre);
+      toast.success(res.message || "Día cerrado registrado exitosamente.", {
+        titulo: "Fecha No Laborable Guardada",
+      });
+    } catch (err) {
+      agregarCierre(empresa.id, nuevoCierre);
+      toast.error(err, {
+        titulo: "Error al registrar día cerrado en API",
+      });
+    } finally {
+      setFechaCierre("");
+      setMotivoCierre("");
+    }
+  };
+
+  const handleEliminarCierre = async (cierreId) => {
+    try {
+      await settingsService.deleteHoliday(cierreId);
+      eliminarCierre(empresa.id, cierreId);
+      toast.info("Día cerrado eliminado del sistema.");
+    } catch (err) {
+      eliminarCierre(empresa.id, cierreId);
+      toast.error(err, {
+        titulo: "Error al eliminar fecha",
+      });
+    }
   };
 
   const setHorarioDia = (key, patch) => {
@@ -79,12 +210,29 @@ export default function BusinessDetailPage() {
     });
   };
 
+  const handleGuardarHorarios = async () => {
+    setIsSaving(true);
+    const schedulePayload = settingsService.formatScheduleForApi(empresa.horario);
+    try {
+      const res = await settingsService.updateSchedule(schedulePayload);
+      toast.success(res.message || "Horarios sincronizados con el backend.", {
+        titulo: "Horario Guardado",
+      });
+    } catch (err) {
+      toast.error(err, {
+        titulo: "Error al sincronizar horario semanal",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-5 sm:space-y-6 min-w-0 w-full">
       {/* Botón Volver */}
       <button
         onClick={() => navigate("/dashboard")}
-        className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors"
+        className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
       >
         <ArrowLeft size={16} /> Volver a Todos los Negocios
       </button>
@@ -131,7 +279,7 @@ export default function BusinessDetailPage() {
           </div>
           <BotToggle
             activo={empresa.activo}
-            onChange={(val) => actualizarEmpresa(empresa.id, { activo: val })}
+            onChange={handleToggleBot}
             ariaLabel="Toggle Bot para este negocio"
           />
         </div>
@@ -140,13 +288,13 @@ export default function BusinessDetailPage() {
       {/* Navegación por Pestañas */}
       <div className="flex border-b border-slate-200/80 overflow-x-auto">
         {[
-          { id: "servicios", label: `Servicios (${empresa.servicios.length})` },
+          { id: "servicios", label: `Servicios (${empresa.servicios?.length || 0})` },
           { id: "disponibilidad", label: "Horarios y Días Cerrados" },
         ].map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`relative px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
+            className={`relative px-4 sm:px-5 py-3 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
               tab === t.id ? "text-brand-600 font-bold" : "text-slate-500 hover:text-slate-900"
             }`}
           >
@@ -166,7 +314,10 @@ export default function BusinessDetailPage() {
               El bot utiliza la duración de cada servicio para calcular los horarios libres en Google Calendar.
             </p>
             {!creandoServicio && !editandoServicio && (
-              <button onClick={() => setCreandoServicio(true)} className="btn-primary text-xs self-start sm:self-auto py-2">
+              <button
+                onClick={() => setCreandoServicio(true)}
+                className="btn-primary text-xs self-start sm:self-auto py-2 cursor-pointer"
+              >
                 <Plus size={15} /> Agregar Servicio
               </button>
             )}
@@ -176,7 +327,7 @@ export default function BusinessDetailPage() {
           {(creandoServicio || editandoServicio) && (
             <form onSubmit={handleGuardarServicio} className="card-base bg-white/80 space-y-3.5 sm:space-y-4">
               <h3 className="text-xs sm:text-sm font-bold text-slate-900">
-                {editandoServicio ? "Editar Servicio" : "Nuevo Servicio"}
+                {editandoServicio ? "Editar Servicio" : "Nuevo Servicio en Catálogo (POST /api/services)"}
               </h3>
               <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2">
@@ -186,7 +337,7 @@ export default function BusinessDetailPage() {
                     required
                     value={formServicio.nombre}
                     onChange={(e) => setFormServicio({ ...formServicio, nombre: e.target.value })}
-                    placeholder="Ej: Corte Dama + Secado"
+                    placeholder="Ej: Blanqueamiento Dental Láser"
                     className="input-base"
                   />
                 </div>
@@ -202,11 +353,11 @@ export default function BusinessDetailPage() {
                   />
                 </div>
                 <div>
-                  <label className="label-base">Precio (COP)</label>
+                  <label className="label-base">Precio ($)</label>
                   <input
                     type="number"
                     min="0"
-                    step="1000"
+                    step="1"
                     value={formServicio.precio}
                     onChange={(e) => setFormServicio({ ...formServicio, precio: Number(e.target.value) })}
                     className="input-base"
@@ -218,14 +369,19 @@ export default function BusinessDetailPage() {
                     type="text"
                     value={formServicio.nota}
                     onChange={(e) => setFormServicio({ ...formServicio, nota: e.target.value })}
-                    placeholder="Ej: Incluye prueba previa o lavado"
+                    placeholder="Ej: Incluye prueba previa o limpieza"
                     className="input-base"
                   />
                 </div>
               </div>
               <div className="flex gap-2.5 pt-2">
-                <button type="submit" className="btn-primary text-xs py-2 px-4">
-                  <Check size={15} /> Guardar Servicio
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="btn-primary text-xs py-2 px-4 cursor-pointer flex items-center gap-1.5"
+                >
+                  {isSaving ? <RefreshCw size={13} className="animate-spin" /> : <Check size={15} />}
+                  <span>Guardar Servicio</span>
                 </button>
                 <button
                   type="button"
@@ -233,7 +389,7 @@ export default function BusinessDetailPage() {
                     setCreandoServicio(false);
                     setEditandoServicio(null);
                   }}
-                  className="btn-secondary text-xs py-2 px-4"
+                  className="btn-secondary text-xs py-2 px-4 cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -243,46 +399,53 @@ export default function BusinessDetailPage() {
 
           {/* Lista de Servicios */}
           <div className="grid gap-2.5 sm:gap-3">
-            {empresa.servicios.map((s) => (
-              <div
-                key={s.id}
-                className="card-base flex items-center justify-between p-3.5 sm:p-4 gap-3 min-w-0"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm font-bold text-slate-900 truncate">{s.nombre}</p>
-                  <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-1.5">
-                    <span>{s.duracion} min</span>
-                    <span>·</span>
-                    <strong className="text-brand-700 font-bold">{money(s.precio)}</strong>
-                    {s.nota && (
-                      <>
-                        <span>·</span>
-                        <span className="truncate max-w-[180px] sm:max-w-xs">{s.nota}</span>
-                      </>
-                    )}
-                  </p>
+            {(!empresa.servicios || empresa.servicios.length === 0) ? (
+              <p className="text-xs text-slate-400 italic py-4 text-center">No hay servicios registrados en este comercio.</p>
+            ) : (
+              empresa.servicios.map((s) => (
+                <div
+                  key={s.id}
+                  className="card-base flex items-center justify-between p-3.5 sm:p-4 gap-3 min-w-0"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs sm:text-sm font-bold text-slate-900 truncate">{s.nombre}</p>
+                    <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-1.5">
+                      <span>{s.duracion} min</span>
+                      <span>·</span>
+                      <strong className="text-brand-700 font-bold">{money(s.precio)}</strong>
+                      {s.nota && (
+                        <>
+                          <span>·</span>
+                          <span className="truncate max-w-[180px] sm:max-w-xs">{s.nota}</span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => {
+                        setEditandoServicio(s.id);
+                        setFormServicio(s);
+                      }}
+                      className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 transition-colors cursor-pointer"
+                      aria-label={`Editar ${s.nombre}`}
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        eliminarServicio(empresa.id, s.id);
+                        toast.info(`Servicio "${s.nombre}" removido`);
+                      }}
+                      className="rounded-lg p-1.5 text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                      aria-label={`Eliminar ${s.nombre}`}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={() => {
-                      setEditandoServicio(s.id);
-                      setFormServicio(s);
-                    }}
-                    className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 transition-colors"
-                    aria-label={`Editar ${s.nombre}`}
-                  >
-                    <Pencil size={15} />
-                  </button>
-                  <button
-                    onClick={() => eliminarServicio(empresa.id, s.id)}
-                    className="rounded-lg p-1.5 text-red-500 hover:bg-red-50 transition-colors"
-                    aria-label={`Eliminar ${s.nombre}`}
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       )}
@@ -292,13 +455,23 @@ export default function BusinessDetailPage() {
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Horario Semanal */}
           <div className="card-base space-y-4">
-            <div>
-              <h3 className="text-sm sm:text-base font-bold text-slate-900 font-display">Horario Semanal</h3>
-              <p className="text-xs text-slate-500">Los días desactivados no serán ofrecidos por el bot.</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 font-display">Horario Semanal</h3>
+                <p className="text-xs text-slate-500">Los días desactivados no serán ofrecidos por el bot.</p>
+              </div>
+              <button
+                onClick={handleGuardarHorarios}
+                disabled={isSaving}
+                className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1 cursor-pointer"
+              >
+                {isSaving ? <RefreshCw size={12} className="animate-spin" /> : <Save size={12} />}
+                <span>Guardar</span>
+              </button>
             </div>
             <div className="space-y-3">
               {DIAS.map((d) => {
-                const h = empresa.horario[d.key];
+                const h = empresa.horario[d.key] || { abre: false, desde: "09:00", hasta: "18:00" };
                 return (
                   <div key={d.key} className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
                     <div className="flex items-center gap-3">
@@ -365,24 +538,24 @@ export default function BusinessDetailPage() {
                   className="input-base"
                 />
               </div>
-              <button type="submit" className="btn-secondary text-xs w-full py-2">
+              <button type="submit" className="btn-secondary text-xs w-full py-2 cursor-pointer flex items-center justify-center gap-1.5">
                 <Plus size={15} /> Marcar Día Cerrado
               </button>
             </form>
 
             <div className="space-y-2 pt-2">
-              {empresa.cierres.length === 0 ? (
+              {(!empresa.cierres || empresa.cierres.length === 0) ? (
                 <p className="text-xs text-slate-400 text-center py-4">No hay días cerrados programados.</p>
               ) : (
                 empresa.cierres.map((c) => (
                   <div key={c.id} className="flex items-center justify-between rounded-xl bg-amber-50/80 p-3 border border-amber-200/60">
                     <div className="min-w-0 flex-1 pr-2">
-                      <p className="text-xs font-bold text-amber-900">{fechaLarga(c.fecha)}</p>
-                      <p className="text-xs text-amber-700 truncate">{c.motivo}</p>
+                      <p className="text-xs font-bold text-amber-900">{fechaLarga(c.fecha || c.closed_date)}</p>
+                      <p className="text-xs text-amber-700 truncate">{c.motivo || c.reason}</p>
                     </div>
                     <button
-                      onClick={() => eliminarCierre(empresa.id, c.id)}
-                      className="text-amber-700 hover:text-amber-900 p-1 rounded-lg shrink-0"
+                      onClick={() => handleEliminarCierre(c.id)}
+                      className="text-amber-700 hover:text-amber-900 p-1 rounded-lg shrink-0 cursor-pointer"
                       aria-label="Eliminar día cerrado"
                     >
                       <X size={16} />

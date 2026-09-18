@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bot,
@@ -13,74 +13,224 @@ import {
   Trash2,
   Smartphone,
   Info,
+  Save,
+  RefreshCw,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useBusiness } from "../context/BusinessContext";
-import Toast from "../components/common/Toast";
+import { useToast } from "../context/ToastContext";
+import { settingsService } from "../services";
 
 const DIAS_SEMANA = [
-  { clave: "lun", nombre: "Lunes" },
-  { clave: "mar", nombre: "Martes" },
-  { clave: "mie", nombre: "Miércoles" },
-  { clave: "jue", nombre: "Jueves" },
-  { clave: "vie", nombre: "Viernes" },
-  { clave: "sab", nombre: "Sábado" },
-  { clave: "dom", nombre: "Domingo" },
+  { clave: "lun", nombre: "Lunes", diaNumero: 1 },
+  { clave: "mar", nombre: "Martes", diaNumero: 2 },
+  { clave: "mie", nombre: "Miércoles", diaNumero: 3 },
+  { clave: "jue", nombre: "Jueves", diaNumero: 4 },
+  { clave: "vie", nombre: "Viernes", diaNumero: 5 },
+  { clave: "sab", nombre: "Sábado", diaNumero: 6 },
+  { clave: "dom", nombre: "Domingo", diaNumero: 7 },
 ];
 
 export default function MerchantPortalPage() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
-  const {
-    empresas,
-    toggleBotEmpresa,
-    actualizarEmpresa,
-    agregarCierre,
-    eliminarCierre,
-    toast,
-    showToast,
-  } = useBusiness();
+  const { user, setUser, logout } = useAuth();
+  const { empresas, toggleBotEmpresa, actualizarEmpresa } = useBusiness();
+  const { toast } = useToast();
 
-  // Encontrar la empresa correspondiente al usuario logueado
   const empresaActual =
     empresas.find((e) => e.id === (user?.empresaId || 1)) || empresas[0];
 
+  // Estado local sincronizado con el backend
+  const [botActivo, setBotActivo] = useState(
+    user?.isBotActive !== undefined ? user.isBotActive : empresaActual?.activo ?? true
+  );
+  const [horario, setHorario] = useState(
+    empresaActual?.horario || {
+      lun: { abre: true, desde: "09:00", hasta: "19:00" },
+      mar: { abre: true, desde: "09:00", hasta: "19:00" },
+      mie: { abre: true, desde: "09:00", hasta: "19:00" },
+      jue: { abre: true, desde: "09:00", hasta: "19:00" },
+      vie: { abre: true, desde: "09:00", hasta: "19:00" },
+      sab: { abre: true, desde: "10:00", hasta: "15:00" },
+      dom: { abre: false, desde: "09:00", hasta: "13:00" },
+    }
+  );
+  const [feriados, setFeriados] = useState(
+    empresaActual?.cierres || [
+      { id: "10", fecha: "2026-12-25", motivo: "Navidad" },
+      { id: "11", fecha: "2027-01-01", motivo: "Año Nuevo" },
+    ]
+  );
+
   const [nuevoCierreFecha, setNuevoCierreFecha] = useState("");
   const [nuevoCierreMotivo, setNuevoCierreMotivo] = useState("");
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false);
+  const [isUpdatingBot, setIsUpdatingBot] = useState(false);
+  const [isAddingHoliday, setIsAddingHoliday] = useState(false);
 
-  const handleToggleBot = () => {
-    toggleBotEmpresa(empresaActual.id, !empresaActual.activo);
+  // Cargar datos iniciales del backend si hay token
+  const cargarDatosBackend = async () => {
+    try {
+      // 1. Cargar Horarios
+      const scheduleRes = await settingsService.getSchedule();
+      if (scheduleRes?.data) {
+        const formattedSchedule = settingsService.formatScheduleForUi(scheduleRes.data);
+        setHorario(formattedSchedule);
+      }
+    } catch (err) {
+      // Si falla por ser primera carga o modo offline, no bloquear
+      console.log("Modo offline o backend sin horarios previos:", err?.message);
+    }
+
+    try {
+      // 2. Cargar Feriados
+      const holidaysRes = await settingsService.getHolidays();
+      if (holidaysRes?.data) {
+        const mappedHolidays = holidaysRes.data.map((h) => ({
+          id: h.id,
+          fecha: h.closed_date,
+          motivo: h.reason,
+        }));
+        setFeriados(mappedHolidays);
+      }
+    } catch (err) {
+      console.log("Modo offline o backend sin feriados:", err?.message);
+    }
   };
 
+  useEffect(() => {
+    cargarDatosBackend();
+  }, []);
+
+  // 1. Alternar Estado del Bot (PUT /api/settings/bot-status)
+  const handleToggleBot = async () => {
+    const nuevoEstado = !botActivo;
+    setIsUpdatingBot(true);
+
+    try {
+      const res = await settingsService.updateBotStatus(nuevoEstado);
+      setBotActivo(nuevoEstado);
+      if (user) {
+        setUser((prev) => ({ ...prev, isBotActive: nuevoEstado }));
+      }
+      toggleBotEmpresa(empresaActual.id, nuevoEstado, true);
+      toast.success(
+        res.message || (nuevoEstado ? "Bot activado exitosamente." : "Bot pausado exitosamente."),
+        {
+          titulo: nuevoEstado ? "Bot WhatsApp Encendido" : "Bot WhatsApp en Pausa",
+        }
+      );
+    } catch (error) {
+      // Fallback local con toast informativo
+      setBotActivo(nuevoEstado);
+      toggleBotEmpresa(empresaActual.id, nuevoEstado, true);
+      toast.error(error?.message || "No se pudo actualizar el estado del bot en el servidor.", {
+        titulo: "Error al actualizar Bot",
+      });
+    } finally {
+      setIsUpdatingBot(false);
+    }
+  };
+
+  // 2. Modificar un día en memoria
   const handleCambioDia = (clave, abre, desde, hasta) => {
-    const horarioActualizado = {
-      ...empresaActual.horario,
+    setHorario((prev) => ({
+      ...prev,
       [clave]: {
-        abre: abre !== undefined ? abre : empresaActual.horario[clave]?.abre ?? true,
-        desde: desde || empresaActual.horario[clave]?.desde || "09:00",
-        hasta: hasta || empresaActual.horario[clave]?.hasta || "19:00",
+        abre: abre !== undefined ? abre : prev[clave]?.abre ?? true,
+        desde: desde || prev[clave]?.desde || "09:00",
+        hasta: hasta || prev[clave]?.hasta || "19:00",
       },
-    };
-    actualizarEmpresa(empresaActual.id, { horario: horarioActualizado });
+    }));
   };
 
-  const handleAgregarCierre = (e) => {
+  // 3. Guardar Horarios Semanales (PUT /api/settings/schedule)
+  const handleGuardarHorarios = async () => {
+    setIsSavingSchedule(true);
+    const schedulePayload = settingsService.formatScheduleForApi(horario);
+
+    try {
+      const res = await settingsService.updateSchedule(schedulePayload);
+      actualizarEmpresa(empresaActual.id, { horario }, true);
+      toast.success(res.message || "Horarios de atención actualizados exitosamente.", {
+        titulo: "Horarios Sincronizados",
+      });
+    } catch (error) {
+      actualizarEmpresa(empresaActual.id, { horario }, true);
+      toast.error(error?.message || "Error al sincronizar horarios con el servidor.", {
+        titulo: "Error al guardar horarios",
+      });
+    } finally {
+      setIsSavingSchedule(false);
+    }
+  };
+
+  // 4. Agregar Feriado (POST /api/settings/holidays)
+  const handleAgregarCierre = async (e) => {
     e.preventDefault();
     if (!nuevoCierreFecha) {
-      showToast("Por favor selecciona una fecha", "info");
+      toast.warning("Por favor selecciona una fecha de cierre");
       return;
     }
-    agregarCierre(empresaActual.id, {
-      id: Date.now(),
-      fecha: nuevoCierreFecha,
-      motivo: nuevoCierreMotivo.trim() || "Cerrado por descanso / mantenimiento",
-    });
-    setNuevoCierreFecha("");
-    setNuevoCierreMotivo("");
+
+    setIsAddingHoliday(true);
+    const motivoTexto = nuevoCierreMotivo.trim() || "Día festivo / Cierre";
+
+    try {
+      const res = await settingsService.createHoliday({
+        date: nuevoCierreFecha,
+        reason: motivoTexto,
+      });
+
+      const nuevoFeriado = {
+        id: res.data?.id || Date.now(),
+        fecha: res.data?.closed_date || nuevoCierreFecha,
+        motivo: res.data?.reason || motivoTexto,
+      };
+
+      setFeriados((prev) => [...prev, nuevoFeriado].sort((a, b) => a.fecha.localeCompare(b.fecha)));
+      setNuevoCierreFecha("");
+      setNuevoCierreMotivo("");
+      toast.success(res.message || "Día feriado registrado exitosamente.", {
+        titulo: "Fecha no laborable agregada",
+      });
+    } catch (error) {
+      // Registrar localmente y mostrar toast con diagnóstico
+      const nuevoFeriado = {
+        id: Date.now(),
+        fecha: nuevoCierreFecha,
+        motivo: motivoTexto,
+      };
+      setFeriados((prev) => [...prev, nuevoFeriado].sort((a, b) => a.fecha.localeCompare(b.fecha)));
+      setNuevoCierreFecha("");
+      setNuevoCierreMotivo("");
+      toast.error(error, {
+        titulo: "Fallo al guardar feriado en backend",
+      });
+    } finally {
+      setIsAddingHoliday(false);
+    }
+  };
+
+  // 5. Eliminar Feriado (DELETE /api/settings/holidays/:id)
+  const handleEliminarCierre = async (id) => {
+    try {
+      const res = await settingsService.deleteHoliday(id);
+      setFeriados((prev) => prev.filter((c) => c.id !== id));
+      toast.info(res.message || "Día feriado eliminado exitosamente.", {
+        titulo: "Fecha eliminada",
+      });
+    } catch (error) {
+      setFeriados((prev) => prev.filter((c) => c.id !== id));
+      toast.error(error, {
+        titulo: "Error al eliminar feriado del servidor",
+      });
+    }
   };
 
   const handleLogout = () => {
     logout();
+    toast.info("Has cerrado sesión exitosamente.");
     navigate("/login");
   };
 
@@ -90,10 +240,18 @@ export default function MerchantPortalPage() {
     { hora: "04:15 PM", servicio: "Corte de Cabello", cliente: "Mateo Giraldo", estado: "Confirmada por Bot" },
   ];
 
+  const calendarEmail = user?.email || empresaActual?.googleCalendarEmail || "";
+
+  const handleOpenCalendar = () => {
+    if (calendarEmail) {
+      window.open(`https://calendar.google.com/calendar/r?authuser=${encodeURIComponent(calendarEmail)}`, "_blank");
+    } else {
+      window.open("https://calendar.google.com", "_blank");
+    }
+  };
+
   return (
     <div className="min-h-screen text-slate-900 font-sans pb-20 selection:bg-brand-500 selection:text-white overflow-x-hidden">
-      <Toast toast={toast} />
-
       {/* Header del Portal de Comercio Nova Glass */}
       <header className="sticky top-0 z-40 border-b border-white/80 bg-white/75 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-3 sm:px-6 py-3 sm:py-3.5 gap-2">
@@ -104,7 +262,7 @@ export default function MerchantPortalPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="font-display font-bold text-slate-900 text-sm sm:text-base truncate">
-                  {empresaActual?.nombre || user?.name}
+                  {user?.name || empresaActual?.nombre}
                 </span>
                 <span className="glass-pill-cyan text-[9px] sm:text-[10px] shrink-0">
                   PORTAL COMERCIO
@@ -112,7 +270,7 @@ export default function MerchantPortalPage() {
               </div>
               <p className="text-[11px] sm:text-xs text-slate-500 flex items-center gap-1.5 mt-0.5 font-medium truncate">
                 <Smartphone size={11} className="text-emerald-600 shrink-0" />
-                <span className="truncate">{empresaActual?.telefono || "+57 310 000 0000"}</span>
+                <span className="truncate">{user?.whatsappNumber || empresaActual?.telefono || "+58 412 123 4567"}</span>
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
               </p>
             </div>
@@ -120,7 +278,7 @@ export default function MerchantPortalPage() {
 
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() => window.open("https://calendar.google.com", "_blank")}
+              onClick={handleOpenCalendar}
               className="btn-secondary text-xs py-1.5 sm:py-2 px-2.5 sm:px-3.5"
               aria-label="Abrir Google Calendar"
             >
@@ -150,20 +308,19 @@ export default function MerchantPortalPage() {
         <section>
           <div
             className={`rounded-3xl border p-5 sm:p-8 transition-all duration-300 shadow-glass-lg relative overflow-hidden ${
-              empresaActual?.activo
+              botActivo
                 ? "bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border-emerald-500/40 text-white"
                 : "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-white/20 text-white"
             }`}
           >
-            {/* Resplandor ambiental interno */}
             <div className={`absolute -right-20 -top-20 h-56 sm:h-64 w-56 sm:w-64 rounded-full blur-3xl pointer-events-none ${
-              empresaActual?.activo ? "bg-emerald-500/20" : "bg-amber-500/10"
+              botActivo ? "bg-emerald-500/20" : "bg-amber-500/10"
             }`} />
 
             <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5 sm:gap-6">
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full px-3 py-1 text-[11px] sm:text-xs font-bold uppercase tracking-wider bg-white/10 backdrop-blur-md border border-white/20">
-                  {empresaActual?.activo ? (
+                  {botActivo ? (
                     <>
                       <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                       <span className="text-emerald-300">Bot de WhatsApp Activo 24/7</span>
@@ -177,13 +334,13 @@ export default function MerchantPortalPage() {
                 </div>
 
                 <h1 className="text-xl sm:text-3xl font-display font-extrabold tracking-tight leading-tight">
-                  {empresaActual?.activo
+                  {botActivo
                     ? "El Bot está atendiendo y agendando citas"
                     : "El Bot está pausado y no agendará citas"}
                 </h1>
 
                 <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
-                  {empresaActual?.activo
+                  {botActivo
                     ? "Tus clientes reciben respuesta en menos de 1 segundo con la disponibilidad exacta de tu Google Calendar."
                     : "Los clientes recibirán un aviso cortés informando que las reservas automáticas están en pausa."}
                 </p>
@@ -193,14 +350,15 @@ export default function MerchantPortalPage() {
               <div className="shrink-0 flex items-center w-full sm:w-auto">
                 <button
                   onClick={handleToggleBot}
-                  className={`group relative flex items-center justify-center gap-2.5 sm:gap-3 rounded-2xl px-5 sm:px-6 py-3.5 sm:py-4 font-extrabold text-xs sm:text-base transition-all duration-200 shadow-lg active:scale-95 border w-full sm:w-auto ${
-                    empresaActual?.activo
+                  disabled={isUpdatingBot}
+                  className={`group relative flex items-center justify-center gap-2.5 sm:gap-3 rounded-2xl px-5 sm:px-6 py-3.5 sm:py-4 font-extrabold text-xs sm:text-base transition-all duration-200 shadow-lg active:scale-95 border w-full sm:w-auto cursor-pointer ${
+                    botActivo
                       ? "bg-gradient-to-r from-emerald-400 to-teal-300 hover:from-emerald-300 hover:to-teal-200 text-slate-950 border-emerald-200 shadow-[0_0_25px_rgba(52,211,153,0.4)]"
                       : "bg-slate-800 hover:bg-slate-700 text-white border-white/20 shadow-black/20"
                   }`}
                 >
-                  <Power size={20} className={empresaActual?.activo ? "text-slate-950" : "text-amber-400"} />
-                  <span>{empresaActual?.activo ? "BOT ENCENDIDO" : "BOT APAGADO"}</span>
+                  <Power size={20} className={botActivo ? "text-slate-950" : "text-amber-400"} />
+                  <span>{botActivo ? "BOT ENCENDIDO" : "BOT APAGADO"}</span>
                 </button>
               </div>
             </div>
@@ -226,14 +384,14 @@ export default function MerchantPortalPage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5 truncate">
-                  Vinculado: <strong className="text-brand-700">{empresaActual?.googleCalendarEmail || "agenda@gmail.com"}</strong>
+                  Vinculado: <strong className="text-brand-700">{user?.email || empresaActual?.googleCalendarEmail || "agenda@gmail.com"}</strong>
                 </p>
               </div>
             </div>
 
             <button
-              onClick={() => window.open("https://calendar.google.com", "_blank")}
-              className="btn-primary text-xs sm:text-sm py-2 px-4 self-start sm:self-auto"
+              onClick={handleOpenCalendar}
+              className="btn-primary text-xs sm:text-sm py-2 px-4 self-start sm:self-auto cursor-pointer"
             >
               <Calendar size={14} />
               Ver en Google Calendar
@@ -271,7 +429,7 @@ export default function MerchantPortalPage() {
             <div className="mt-3.5 sm:mt-4 rounded-2xl bg-cyan-50/70 border border-cyan-200/70 p-3 sm:p-3.5 flex items-start gap-2.5 text-xs text-cyan-900">
               <Info size={15} className="text-cyan-600 shrink-0 mt-0.5" />
               <span className="leading-relaxed">
-                <strong>Tip de automatización:</strong> Cualquier compromiso personal o bloqueo en tu Google Calendar hará que el bot respete ese espacio y no ofrezca ese horario a los clientes.
+                <strong>Tip de automatización:</strong> Cualquier bloqueo en tu Google Calendar hará que el bot respete ese espacio y no ofrezca ese horario a los clientes.
               </span>
             </div>
           </div>
@@ -281,18 +439,38 @@ export default function MerchantPortalPage() {
         {/* 3. CONTROL DE HORARIOS Y DÍAS */}
         {/* ============================================================ */}
         <section className="glass-panel p-4 sm:p-7">
-          <div className="pb-4 sm:pb-5 border-b border-slate-200/60">
-            <h2 className="text-base sm:text-lg font-display font-bold text-slate-900">
-              Horarios y Días de Atención
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-              Enciende o apaga los días que abre tu local y define las horas en que el bot puede agendar citas.
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 sm:pb-5 border-b border-slate-200/60">
+            <div>
+              <h2 className="text-base sm:text-lg font-display font-bold text-slate-900">
+                Horarios y Días de Atención Semanal
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                Enciende o apaga los días que abre tu local y define las horas en que el bot puede agendar citas.
+              </p>
+            </div>
+
+            <button
+              onClick={handleGuardarHorarios}
+              disabled={isSavingSchedule}
+              className="btn-primary text-xs py-2 px-4 self-start sm:self-auto flex items-center gap-1.5"
+            >
+              {isSavingSchedule ? (
+                <>
+                  <RefreshCw size={13} className="animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <Save size={13} />
+                  Guardar Horarios
+                </>
+              )}
+            </button>
           </div>
 
           <div className="mt-4 sm:mt-6 space-y-2.5 sm:space-y-3">
             {DIAS_SEMANA.map((dia) => {
-              const config = empresaActual?.horario?.[dia.clave] || {
+              const config = horario[dia.clave] || {
                 abre: true,
                 desde: "09:00",
                 hasta: "19:00",
@@ -370,7 +548,7 @@ export default function MerchantPortalPage() {
         </section>
 
         {/* ============================================================ */}
-        {/* 4. DÍAS DE CIERRE TEMPORAL */}
+        {/* 4. DÍAS DE CIERRE TEMPORAL (FERIADOS / VACACIONES) */}
         {/* ============================================================ */}
         <section className="glass-panel p-4 sm:p-7">
           <div className="pb-4 sm:pb-5 border-b border-slate-200/60">
@@ -408,7 +586,7 @@ export default function MerchantPortalPage() {
                 type="text"
                 value={nuevoCierreMotivo}
                 onChange={(e) => setNuevoCierreMotivo(e.target.value)}
-                placeholder="Ej. Aniversario, Festivo, Vacaciones"
+                placeholder="Ej. Navidad, Año Nuevo, Vacaciones"
                 className="input-base text-xs py-2"
               />
             </div>
@@ -416,22 +594,23 @@ export default function MerchantPortalPage() {
             <div className="sm:col-span-3">
               <button
                 type="submit"
-                className="btn-primary w-full text-xs py-2.5 flex items-center justify-center gap-1.5"
+                disabled={isAddingHoliday}
+                className="btn-primary w-full text-xs py-2.5 flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Plus size={15} />
-                Agregar Fecha
+                {isAddingHoliday ? <RefreshCw size={13} className="animate-spin" /> : <Plus size={15} />}
+                <span>Agregar Fecha</span>
               </button>
             </div>
           </form>
 
           {/* Lista de cierres programados */}
           <div className="mt-4 sm:mt-5 space-y-2.5">
-            {(!empresaActual?.cierres || empresaActual.cierres.length === 0) ? (
+            {feriados.length === 0 ? (
               <p className="text-xs text-slate-400 italic py-2 text-center sm:text-left">
                 No tienes días cerrados especiales programados.
               </p>
             ) : (
-              empresaActual.cierres.map((cierre) => (
+              feriados.map((cierre) => (
                 <div
                   key={cierre.id}
                   className="flex items-center justify-between rounded-2xl border border-amber-200/80 bg-amber-50/70 p-3 sm:p-3.5 min-w-0"
@@ -451,8 +630,8 @@ export default function MerchantPortalPage() {
                   </div>
 
                   <button
-                    onClick={() => eliminarCierre(empresaActual.id, cierre.id)}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    onClick={() => handleEliminarCierre(cierre.id)}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                     title="Eliminar día cerrado"
                     aria-label="Eliminar día cerrado"
                   >
