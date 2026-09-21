@@ -39,6 +39,7 @@ export default function BusinessDetailPage() {
   const [creandoServicio, setCreandoServicio] = useState(false);
   const [editandoServicio, setEditandoServicio] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingServiceId, setDeletingServiceId] = useState(null);
 
   // Form state para nuevos servicios
   const [formServicio, setFormServicio] = useState({
@@ -148,31 +149,50 @@ export default function BusinessDetailPage() {
     }
 
     setIsSaving(true);
+    const esEdicion = Boolean(editandoServicio);
     const nuevoItem = {
-      id: formServicio.id || uid(),
+      id: formServicio.id || (esEdicion ? editandoServicio : uid()),
       nombre: formServicio.nombre.trim(),
       duracion: Number(formServicio.duracion) || 30,
       precio: Number(formServicio.precio) || 0,
       nota: formServicio.nota || "",
-      is_active: true,
+      is_active: formServicio.is_active !== undefined ? formServicio.is_active : true,
     };
 
     try {
       let res;
-      try {
-        res = await businessService.createBusinessService(empresa.id, {
-          name: nuevoItem.nombre,
-          duration_minutes: nuevoItem.duracion,
-          price: nuevoItem.precio,
-          is_active: true,
-        });
-      } catch {
-        res = await servicesService.createService({
-          name: nuevoItem.nombre,
-          duration_minutes: nuevoItem.duracion,
-          price: nuevoItem.precio,
-          is_active: true,
-        });
+      if (esEdicion) {
+        try {
+          res = await businessService.updateBusinessService(empresa.id, nuevoItem.id, {
+            name: nuevoItem.nombre,
+            duration_minutes: nuevoItem.duracion,
+            price: nuevoItem.precio,
+            is_active: nuevoItem.is_active,
+          });
+        } catch {
+          res = await servicesService.updateService(nuevoItem.id, {
+            name: nuevoItem.nombre,
+            duration_minutes: nuevoItem.duracion,
+            price: nuevoItem.precio,
+            is_active: nuevoItem.is_active,
+          });
+        }
+      } else {
+        try {
+          res = await businessService.createBusinessService(empresa.id, {
+            name: nuevoItem.nombre,
+            duration_minutes: nuevoItem.duracion,
+            price: nuevoItem.precio,
+            is_active: nuevoItem.is_active,
+          });
+        } catch {
+          res = await servicesService.createService({
+            name: nuevoItem.nombre,
+            duration_minutes: nuevoItem.duracion,
+            price: nuevoItem.precio,
+            is_active: nuevoItem.is_active,
+          });
+        }
       }
 
       if (res?.data?.id) {
@@ -180,14 +200,14 @@ export default function BusinessDetailPage() {
       }
 
       agregarServicio(empresa.id, nuevoItem);
-      toast.success(res?.message || "Servicio registrado exitosamente en el catálogo.", {
-        titulo: "Servicio Guardado",
+      toast.success(res?.message || (esEdicion ? "Servicio actualizado exitosamente." : "Servicio registrado exitosamente en el catálogo."), {
+        titulo: esEdicion ? "Servicio Actualizado" : "Servicio Guardado",
       });
     } catch (err) {
       // Guardar en estado local y mostrar toast detallado
       agregarServicio(empresa.id, nuevoItem);
       toast.error(err, {
-        titulo: "Fallo al guardar servicio en API",
+        titulo: `Fallo al ${esEdicion ? "actualizar" : "guardar"} servicio en API`,
       });
     } finally {
       setIsSaving(false);
@@ -198,16 +218,25 @@ export default function BusinessDetailPage() {
   };
 
   const handleEliminarServicio = async (servicio) => {
-    eliminarServicio(empresa.id, servicio.id, true);
+    setDeletingServiceId(servicio.id);
     try {
-      await businessService.deleteBusinessService(empresa.id, servicio.id);
-      toast.info(`Servicio "${servicio.nombre}" removido`, {
+      let res;
+      try {
+        res = await businessService.deleteBusinessService(empresa.id, servicio.id);
+      } catch {
+        res = await servicesService.deleteService(servicio.id);
+      }
+      eliminarServicio(empresa.id, servicio.id, true);
+      toast.success(res?.message || `Servicio "${servicio.nombre}" eliminado exitosamente del catálogo.`, {
         titulo: "Servicio Eliminado",
       });
-    } catch {
-      toast.info(`Servicio "${servicio.nombre}" removido`, {
-        titulo: "Servicio Eliminado",
+    } catch (err) {
+      eliminarServicio(empresa.id, servicio.id, true);
+      toast.error(err, {
+        titulo: `Error al eliminar servicio "${servicio.nombre}" en API`,
       });
+    } finally {
+      setDeletingServiceId(null);
     }
   };
 
@@ -512,10 +541,16 @@ export default function BusinessDetailPage() {
                     </button>
                     <button
                       onClick={() => handleEliminarServicio(s)}
-                      className="rounded-lg p-1.5 text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
+                      disabled={deletingServiceId === s.id}
+                      className="rounded-lg p-1.5 text-red-500 hover:bg-red-50 transition-colors cursor-pointer disabled:opacity-50"
                       aria-label={`Eliminar ${s.nombre}`}
+                      title={`Eliminar ${s.nombre}`}
                     >
-                      <Trash2 size={15} />
+                      {deletingServiceId === s.id ? (
+                        <RefreshCw size={15} className="animate-spin text-red-500" />
+                      ) : (
+                        <Trash2 size={15} />
+                      )}
                     </button>
                   </div>
                 </div>

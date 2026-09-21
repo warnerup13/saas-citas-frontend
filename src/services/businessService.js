@@ -52,6 +52,32 @@ export const businessService = {
   },
 
   /**
+   * Actualiza un servicio de un negocio específico
+   * @param {string|number} id - ID del negocio
+   * @param {string|number} serviceId - ID del servicio
+   * @param {Object} serviceData - { name, duration_minutes, price, is_active }
+   */
+  async updateBusinessService(id, serviceId, serviceData) {
+    const payload = {
+      ...(serviceData.name !== undefined && { name: serviceData.name.trim() }),
+      ...(serviceData.nombre !== undefined && { name: serviceData.nombre.trim() }),
+      ...(serviceData.duration_minutes !== undefined && { duration_minutes: Number(serviceData.duration_minutes) }),
+      ...(serviceData.duracion !== undefined && { duration_minutes: Number(serviceData.duracion) }),
+      ...(serviceData.price !== undefined && { price: Number(serviceData.price) }),
+      ...(serviceData.precio !== undefined && { price: Number(serviceData.precio) }),
+      ...(serviceData.is_active !== undefined && { is_active: Boolean(serviceData.is_active) }),
+    };
+
+    try {
+      const response = await apiClient.put(`/business/${id}/services/${serviceId}`, payload);
+      return response.data;
+    } catch {
+      const response = await apiClient.put(`/services/${serviceId}`, payload);
+      return response.data;
+    }
+  },
+
+  /**
    * Elimina un servicio de un negocio específico
    * @param {string|number} id - ID del negocio
    * @param {string|number} serviceId - ID del servicio
