@@ -18,7 +18,7 @@ import { useBusiness } from "../context/BusinessContext";
 import { useToast } from "../context/ToastContext";
 import BotToggle from "../components/common/BotToggle";
 import { money, fechaLarga, DIAS, uid } from "../utils/formatters";
-import { servicesService, settingsService } from "../services";
+import { servicesService, settingsService, businessService } from "../services";
 
 export default function BusinessDetailPage() {
   const { id } = useParams();
@@ -52,32 +52,68 @@ export default function BusinessDetailPage() {
   const [fechaCierre, setFechaCierre] = useState("");
   const [motivoCierre, setMotivoCierre] = useState("");
 
-  // Cargar servicios desde el backend si corresponde al comercio autenticado
+  // Cargar servicios, horarios y feriados desde el backend para el comercio
   useEffect(() => {
-    async function loadBackendServices() {
+    async function loadBackendData() {
       try {
-        const res = await servicesService.getServices();
-        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
-          const mapped = res.data.map((s) => ({
+        // 1. Cargar Servicios del negocio
+        let resServices;
+        try {
+          resServices = await businessService.getBusinessServices(id);
+        } catch {
+          resServices = await servicesService.getServices();
+        }
+        const rawServices = resServices?.data || resServices?.services || (Array.isArray(resServices) ? resServices : null);
+        if (rawServices && Array.isArray(rawServices) && rawServices.length > 0) {
+          const mappedServices = rawServices.map((s) => ({
             id: s.id,
-            nombre: s.name,
-            duracion: s.duration_minutes,
-            precio: Number(s.price),
+            nombre: s.name || s.nombre,
+            duracion: s.duration_minutes || s.duracion,
+            precio: Number(s.price || s.precio),
             nota: s.is_active ? "Servicio Activo" : "Pausado en Bot",
-            is_active: s.is_active,
+            is_active: s.is_active !== undefined ? s.is_active : true,
           }));
-          actualizarEmpresa(empresa.id, { servicios: mapped });
+          actualizarEmpresa(empresa.id, { servicios: mappedServices });
+        }
+
+        // 2. Cargar Feriados / Días cerrados del negocio
+        try {
+          const resHolidays = await businessService.getBusinessHolidays(id);
+          const rawHolidays = resHolidays?.data || resHolidays?.holidays || (Array.isArray(resHolidays) ? resHolidays : null);
+          if (rawHolidays && Array.isArray(rawHolidays)) {
+            const mappedHolidays = rawHolidays.map((h) => ({
+              id: h.id,
+              fecha: (h.closed_date || h.date || "").slice(0, 10),
+              motivo: h.reason || "Cerrado",
+            }));
+            actualizarEmpresa(empresa.id, { cierres: mappedHolidays });
+          }
+        } catch {
+          // Fallback a feriados locales
+        }
+
+        // 3. Cargar Horarios del negocio
+        try {
+          const resSchedule = await businessService.getBusinessSchedule(id);
+          const rawSchedule = resSchedule?.data || resSchedule?.schedule || (Array.isArray(resSchedule) ? resSchedule : null);
+          if (rawSchedule && Array.isArray(rawSchedule) && rawSchedule.length > 0) {
+            const uiSchedule = settingsService.formatScheduleForUi(rawSchedule);
+            actualizarEmpresa(empresa.id, { horario: uiSchedule });
+          }
+        } catch {
+          // Fallback a horario local
         }
       } catch (err) {
-        console.log("Carga servicios backend omitida o en modo local:", err?.message);
+        console.log("Carga datos backend para comercio omitida o en modo local:", err?.message);
       }
     }
 
     if (empresa) {
-      loadBackendServices();
+      loadBackendData();
     }
   }, [id]);
 
+  
   if (!empresa) {
     return (
       <div className="rounded-3xl border border-slate-200 bg-white/80 p-8 sm:p-12 text-center">
@@ -91,17 +127,17 @@ export default function BusinessDetailPage() {
 
   const handleToggleBot = async (val) => {
     actualizarEmpresa(empresa.id, { activo: val });
-    // try {
-    //   const res = await settingsService.updateBotStatus(val);
-    //   toast.success(
-    //     res.message || (val ? `Bot activado para ${empresa.nombre}` : `Bot en pausa para ${empresa.nombre}`),
-    //     { titulo: val ? "Bot Encendido" : "Bot en Pausa" }
-    //   );
-    // } catch (err) {
-    //   toast.error(err, {
-    //     titulo: "Error al actualizar estado del Bot",
-    //   });
-    // }
+    try {
+      const res = await businessService.updateBusinessBotStatus(empresa.id, val);
+      toast.success(
+        res?.message || (val ? `Bot activado para ${empresa.nombre}` : `Bot en pausa para ${empresa.nombre}`),
+        { titulo: val ? "Bot Encendido" : "Bot en Pausa" }
+      );
+    } catch (err) {
+      toast.error(err, {
+        titulo: "Error al actualizar estado del Bot",
+      });
+    }
   };
 
   const handleGuardarServicio = async (e) => {
@@ -122,19 +158,29 @@ export default function BusinessDetailPage() {
     };
 
     try {
-      const res = await servicesService.createService({
-        name: nuevoItem.nombre,
-        duration_minutes: nuevoItem.duracion,
-        price: nuevoItem.precio,
-        is_active: true,
-      });
+      let res;
+      try {
+        res = await businessService.createBusinessService(empresa.id, {
+          name: nuevoItem.nombre,
+          duration_minutes: nuevoItem.duracion,
+          price: nuevoItem.precio,
+          is_active: true,
+        });
+      } catch {
+        res = await servicesService.createService({
+          name: nuevoItem.nombre,
+          duration_minutes: nuevoItem.duracion,
+          price: nuevoItem.precio,
+          is_active: true,
+        });
+      }
 
-      if (res.data?.id) {
+      if (res?.data?.id) {
         nuevoItem.id = res.data.id;
       }
 
       agregarServicio(empresa.id, nuevoItem);
-      toast.success(res.message || "Servicio registrado exitosamente en el catálogo.", {
+      toast.success(res?.message || "Servicio registrado exitosamente en el catálogo.", {
         titulo: "Servicio Guardado",
       });
     } catch (err) {
@@ -148,6 +194,20 @@ export default function BusinessDetailPage() {
       setFormServicio({ nombre: "", duracion: 30, precio: 0, nota: "" });
       setCreandoServicio(false);
       setEditandoServicio(null);
+    }
+  };
+
+  const handleEliminarServicio = async (servicio) => {
+    eliminarServicio(empresa.id, servicio.id, true);
+    try {
+      await businessService.deleteBusinessService(empresa.id, servicio.id);
+      toast.info(`Servicio "${servicio.nombre}" removido`, {
+        titulo: "Servicio Eliminado",
+      });
+    } catch {
+      toast.info(`Servicio "${servicio.nombre}" removido`, {
+        titulo: "Servicio Eliminado",
+      });
     }
   };
 
@@ -166,15 +226,24 @@ export default function BusinessDetailPage() {
     };
 
     try {
-      const res = await settingsService.createHoliday({
-        date: fechaCierre,
-        reason: motivoTexto,
-      });
-      if (res.data?.id) {
+      let res;
+      try {
+        res = await businessService.createBusinessHoliday(empresa.id, {
+          date: fechaCierre,
+          reason: motivoTexto,
+        });
+      } catch {
+        res = await settingsService.createHoliday({
+          date: fechaCierre,
+          reason: motivoTexto,
+        });
+      }
+
+      if (res?.data?.id) {
         nuevoCierre.id = res.data.id;
       }
       agregarCierre(empresa.id, nuevoCierre);
-      toast.success(res.message || "Día cerrado registrado exitosamente.", {
+      toast.success(res?.message || "Día cerrado registrado exitosamente.", {
         titulo: "Fecha No Laborable Guardada",
       });
     } catch (err) {
@@ -190,7 +259,11 @@ export default function BusinessDetailPage() {
 
   const handleEliminarCierre = async (cierreId) => {
     try {
-      await settingsService.deleteHoliday(cierreId);
+      try {
+        await businessService.deleteBusinessHoliday(empresa.id, cierreId);
+      } catch {
+        await settingsService.deleteHoliday(cierreId);
+      }
       eliminarCierre(empresa.id, cierreId);
       toast.info("Día cerrado eliminado del sistema.");
     } catch (err) {
@@ -214,8 +287,13 @@ export default function BusinessDetailPage() {
     setIsSaving(true);
     const schedulePayload = settingsService.formatScheduleForApi(empresa.horario);
     try {
-      const res = await settingsService.updateSchedule(schedulePayload);
-      toast.success(res.message || "Horarios sincronizados con el backend.", {
+      let res;
+      try {
+        res = await businessService.updateBusinessSchedule(empresa.id, schedulePayload);
+      } catch {
+        res = await settingsService.updateSchedule(schedulePayload);
+      }
+      toast.success(res?.message || "Horarios sincronizados con el backend.", {
         titulo: "Horario Guardado",
       });
     } catch (err) {
@@ -433,10 +511,7 @@ export default function BusinessDetailPage() {
                       <Pencil size={15} />
                     </button>
                     <button
-                      onClick={() => {
-                        eliminarServicio(empresa.id, s.id);
-                        toast.info(`Servicio "${s.nombre}" removido`);
-                      }}
+                      onClick={() => handleEliminarServicio(s)}
                       className="rounded-lg p-1.5 text-red-500 hover:bg-red-50 transition-colors cursor-pointer"
                       aria-label={`Eliminar ${s.nombre}`}
                     >

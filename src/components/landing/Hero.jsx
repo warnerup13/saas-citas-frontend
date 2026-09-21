@@ -153,9 +153,9 @@ export default function Hero({ irAlPanel }) {
             <div className="space-y-1.5 sm:space-y-2">
               <h1 className="font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900 leading-[1.08] break-words">
                 MYCITAS{" "}
-                <span className="bg-gradient-to-r from-[#0063fd] via-[#00a6ff] to-[#00d8d8] bg-clip-text text-transparent">
-                  GLASS
-                </span>
+                {/* <span className="bg-gradient-to-r from-[#0063fd] via-[#00a6ff] to-[#00d8d8] bg-clip-text text-transparent">
+                  JW
+                </span> */}
               </h1>
               <p className="text-xs sm:text-base font-semibold uppercase tracking-wider sm:tracking-widest text-slate-500">
                 Automated WhatsApp Engine & Calendar Sync

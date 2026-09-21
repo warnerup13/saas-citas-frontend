@@ -6,43 +6,62 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem(API_CONFIG.storageKeys.user);
-    if (saved) {
+    const token = localStorage.getItem(API_CONFIG.storageKeys.token);
+    const isAuth = localStorage.getItem(API_CONFIG.storageKeys.auth);
+    if (saved && (token || isAuth === "true")) {
       try {
         return JSON.parse(saved);
       } catch (e) {
         return null;
       }
     }
-    return {
-      name: "Peluquería Amaranta",
-      email: "amaranta@negocio.com",
-      role: "comercio",
-      empresaId: 1,
-      avatar: "PA",
-      isBotActive: true,
-    };
+    return null;
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return (
-      localStorage.getItem(API_CONFIG.storageKeys.auth) === "true" ||
-      !!localStorage.getItem(API_CONFIG.storageKeys.token)
-    );
+    const saved = localStorage.getItem(API_CONFIG.storageKeys.user);
+    const token = localStorage.getItem(API_CONFIG.storageKeys.token);
+    const isAuth = localStorage.getItem(API_CONFIG.storageKeys.auth);
+    return !!saved && (token || isAuth === "true");
   });
 
   /**
-   * Inicio de sesión real contra el backend REST
+   * Inicio de sesión real contra el backend REST (Soporta rol Admin y Comercio)
    */
   const loginWithBackend = async (email, password) => {
     const data = await authService.login({ email, password });
+    const isAdminRole = data.role === "admin" || data.type === "admin" || (data.user && !data.business);
+
+    if (isAdminRole) {
+      const adminUser = data.user || {};
+      const userData = {
+        id: adminUser.id || "admin",
+        name: adminUser.name || "Equipo Administrador",
+        email: adminUser.email || email,
+        role: "admin",
+        avatar:
+          adminUser.name
+            ?.split(" ")
+            .map((n) => n[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase() || "AD",
+      };
+      setUser(userData);
+      setIsAuthenticated(true);
+      localStorage.setItem(API_CONFIG.storageKeys.user, JSON.stringify(userData));
+      localStorage.setItem(API_CONFIG.storageKeys.auth, "true");
+      return { success: true, user: userData, token: data.token, role: "admin", message: data.message };
+    }
+
     if (data.business) {
       const userData = {
         id: data.business.id,
         name: data.business.name,
         email: data.business.email,
-        whatsappNumber: data.business.whatsappNumber,
+        whatsappNumber: data.business.whatsappNumber || data.business.whatsapp_number,
         timezone: data.business.timezone,
-        isBotActive: data.business.isBotActive,
+        isBotActive: data.business.isBotActive ?? data.business.is_bot_active,
         role: "comercio",
         empresaId: data.business.id,
         avatar:
@@ -55,8 +74,11 @@ export function AuthProvider({ children }) {
       };
       setUser(userData);
       setIsAuthenticated(true);
-      return { success: true, user: userData, token: data.token, message: data.message };
+      localStorage.setItem(API_CONFIG.storageKeys.user, JSON.stringify(userData));
+      localStorage.setItem(API_CONFIG.storageKeys.auth, "true");
+      return { success: true, user: userData, token: data.token, role: "comercio", message: data.message };
     }
+
     return data;
   };
 
@@ -76,7 +98,7 @@ export function AuthProvider({ children }) {
     return userData;
   };
 
-  const loginAsAdmin = (email = "admin@mycitas.app") => {
+  const loginAsAdmin = (email = "admin@saas.com") => {
     const userData = {
       name: "Equipo Administrador",
       email: email,
@@ -91,13 +113,9 @@ export function AuthProvider({ children }) {
   };
 
   const login = async (email, password, role = "comercio", empresaId = 1, nombre = "Comercio") => {
-    if (role === "admin") {
-      return loginAsAdmin(email);
-    }
     try {
       return await loginWithBackend(email, password);
     } catch (err) {
-      // Si falla llamada al backend, relanzar para que la UI capture el error y muestre el Toast técnico
       throw err;
     }
   };
@@ -107,6 +125,8 @@ export function AuthProvider({ children }) {
     setIsAuthenticated(false);
     setUser(null);
   };
+
+  const userRole = (user?.role || "").toLowerCase();
 
   return (
     <AuthContext.Provider
@@ -119,8 +139,8 @@ export function AuthProvider({ children }) {
         loginAsComercio,
         loginAsAdmin,
         logout,
-        isComercio: user?.role === "comercio",
-        isAdmin: user?.role === "admin",
+        isComercio: userRole === "comercio" || userRole === "business",
+        isAdmin: userRole === "admin",
       }}
     >
       {children}

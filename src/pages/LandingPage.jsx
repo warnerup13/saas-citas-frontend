@@ -10,11 +10,21 @@ import {
   RefreshCw,
 } from "lucide-react";
 import Hero from "../components/landing/Hero";
+import { useAuth } from "../context/AuthContext";
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
 
-  const irAlPanel = () => navigate("/dashboard");
+  const irAlPanel = () => {
+    if (!isAuthenticated || !user) {
+      navigate("/login");
+    } else if (user.role === "admin") {
+      navigate("/dashboard");
+    } else {
+      navigate("/comercio");
+    }
+  };
 
   const casosDestacados = [
     {
@@ -76,7 +86,9 @@ export default function LandingPage() {
                 <Bot size={18} />
               </div>
               <span className="font-display text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-                mycitas<span className="text-cyan-500 font-normal">.glass</span>
+                mycitas
+                
+                {/* <span className="text-cyan-500 font-normal">.glass</span> */}
               </span>
             </Link>
           </div>
@@ -272,11 +284,12 @@ export default function LandingPage() {
           <div className="flex items-center justify-center sm:justify-start gap-2">
             <Bot size={18} className="text-brand-600 shrink-0" />
             <span className="font-display text-base sm:text-lg font-bold text-slate-900">
-              mycitas<span className="text-cyan-500">.glass</span>
+              mycitas
+              {/* <span className="text-cyan-500">.glass</span> */} 
             </span>
           </div>
           <p className="text-[11px] sm:text-xs text-slate-500">
-            Plataforma de IA para WhatsApp & Google Calendar · Sistema Nova Glass
+            Plataforma de IA para WhatsApp & Google Calendar 
           </p>
         </div>
       </footer>

@@ -36,7 +36,18 @@ export function ToastProvider({ children }) {
         timestamp: new Date().toLocaleTimeString(),
       };
 
-      setToasts((prev) => [newToast, ...prev.slice(0, 4)]); // Máximo 5 toasts en pantalla
+      setToasts((prev) => {
+        // Evitar toasts idénticos repetidos en menos de 2 segundos
+        const yaExiste = prev.some(
+          (t) =>
+            t.tipo === tipo &&
+            t.mensaje === mensaje &&
+            t.titulo === titulo
+        );
+        if (yaExiste) return prev;
+
+        return [newToast, ...prev.slice(0, 4)]; // Máximo 5 toasts en pantalla
+      });
 
       return id;
     },

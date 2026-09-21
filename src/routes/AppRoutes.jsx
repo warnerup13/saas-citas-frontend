@@ -8,6 +8,7 @@ import DashboardPage from "../pages/DashboardPage";
 import BusinessDetailPage from "../pages/BusinessDetailPage";
 import AppointmentsPage from "../pages/AppointmentsPage";
 import SettingsPage from "../pages/SettingsPage";
+import ProtectedRoute from "./ProtectedRoute";
 
 export default function AppRoutes() {
   return (
@@ -17,11 +18,25 @@ export default function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/demo" element={<DemoPage />} />
 
-      {/* 2. Portal Exclusivo para el Comercio (Encender/Apagar Bot & Google Calendar) */}
-      <Route path="/comercio" element={<MerchantPortalPage />} />
+      {/* 2. Portal Exclusivo para el Comercio (Requiere estar autenticado con rol 'comercio' o 'business') */}
+      <Route
+        path="/comercio"
+        element={
+          <ProtectedRoute allowedRoles={["comercio", "business"]}>
+            <MerchantPortalPage />
+          </ProtectedRoute>
+        }
+      />
 
-      {/* 3. Panel de Super Administradores (Nosotros - Gestión Global) */}
-      <Route path="/dashboard" element={<DashboardLayout />}>
+      {/* 3. Panel de Super Administradores (Requiere estar autenticado con rol 'admin') */}
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute allowedRoles={["admin"]}>
+            <DashboardLayout />
+          </ProtectedRoute>
+        }
+      >
         <Route index element={<DashboardPage />} />
         <Route path="empresa/:id" element={<BusinessDetailPage />} />
         <Route path="citas" element={<AppointmentsPage />} />
@@ -33,3 +48,4 @@ export default function AppRoutes() {
     </Routes>
   );
 }
+
