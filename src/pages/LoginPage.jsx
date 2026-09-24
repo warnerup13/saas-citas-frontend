@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -20,7 +20,7 @@ import { useToast } from "../context/ToastContext";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { loginWithBackend, loginAsComercio, loginAsAdmin } = useAuth();
+  const { user, isAuthenticated, loginWithBackend, loginAsComercio, loginAsAdmin } = useAuth();
   const { empresas } = useBusiness();
   const { toast } = useToast();
 
@@ -31,13 +31,25 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Si el usuario ya está autenticado, redirigir automáticamente a su panel correspondiente
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const currentRole = (user.role || "").toLowerCase();
+      if (currentRole === "admin") {
+        navigate("/dashboard", { replace: true });
+      } else if (currentRole === "comercio" || currentRole === "business") {
+        navigate("/comercio", { replace: true });
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
+
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (tab === "comercio") {
       setEmail("admin@negocio.com");
       setPassword("password123");
     } else {
-      setEmail("admin@mycitas.app");
+      setEmail("admin@saas.com");
       setPassword("admin123");
     }
   };
@@ -46,33 +58,34 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    if (activeTab === "comercio") {
-      try {
-        const response = await loginWithBackend(email, password);
-        toast.success(response.message || "Inicio de sesión exitoso.", {
-          titulo: `¡Bienvenido ${response.user?.name || ""}!`,
-        });
-        setIsLoading(false);
-        navigate("/comercio");
-      } catch (error) {
-        setIsLoading(false);
-        if (error?.status === 401 || error?.isAuthError) {
-          toast.error("El correo electrónico o la contraseña ingresados son incorrectos. Por favor verifica tus credenciales.", {
-            titulo: "Credenciales Inválidas",
-          });
-        } else {
-          toast.error(error?.message || "No se pudo conectar con el servidor. Intenta de nuevo más tarde.", {
-            titulo: "Fallo de Autenticación",
-          });
-        }
+    try {
+      const response = await loginWithBackend(email, password);
+      const isRoleAdmin = response.role === "admin" || activeTab === "admin";
+
+      toast.success(response.message || "Inicio de sesión exitoso.", {
+        titulo: isRoleAdmin ? `¡Bienvenido Administrador!` : `¡Bienvenido ${response.user?.name || ""}!`,
+      });
+      setIsLoading(false);
+
+      if (isRoleAdmin) {
+        navigate("/dashboard", { replace: true });
+      } else {
+        navigate("/comercio", { replace: true });
       }
-    } else {
-      setTimeout(() => {
-        loginAsAdmin(email);
-        toast.success("Acceso concedido al Panel de Administrador.");
-        setIsLoading(false);
-        navigate("/dashboard");
-      }, 350);
+    } catch (error) {
+      setIsLoading(false);
+      if (error?.status === 401 || error?.isAuthError) {
+        toast.error(
+          "El correo electrónico o la contraseña ingresados son incorrectos. Por favor verifica tus credenciales.",
+          {
+            titulo: "Credenciales Inválidas",
+          }
+        );
+      } else {
+        toast.error(error?.message || "No se pudo conectar con el servidor. Intenta de nuevo más tarde.", {
+          titulo: "Fallo de Autenticación",
+        });
+      }
     }
   };
 
@@ -114,7 +127,9 @@ export default function LoginPage() {
               <Bot size={22} className="sm:w-[26px] sm:h-[26px]" />
             </div>
             <span className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-              mycitas<span className="text-cyan-500 font-normal">.glass</span>
+              mycitas
+              
+              {/* <span className="text-cyan-500 font-normal">.glass</span> */}
             </span>
           </Link>
           <h1 className="mt-2.5 sm:mt-3 text-xl sm:text-2xl font-bold font-display text-slate-900 tracking-tight">

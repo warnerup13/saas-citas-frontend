@@ -20,16 +20,37 @@ export const authService = {
     if (data.token) {
       localStorage.setItem(API_CONFIG.storageKeys.token, data.token);
       localStorage.setItem(API_CONFIG.storageKeys.auth, "true");
-      if (data.business) {
+
+      const isAdmin = data.role === "admin" || data.type === "admin" || (data.user && !data.business);
+
+      if (isAdmin) {
+        const adminUser = data.user || {};
+        localStorage.setItem(
+          API_CONFIG.storageKeys.user,
+          JSON.stringify({
+            id: adminUser.id || "admin",
+            name: adminUser.name || "Equipo Administrador",
+            email: adminUser.email || credentials.email,
+            role: "admin",
+            avatar:
+              adminUser.name
+                ?.split(" ")
+                .map((n) => n[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase() || "AD",
+          })
+        );
+      } else if (data.business) {
         localStorage.setItem(
           API_CONFIG.storageKeys.user,
           JSON.stringify({
             id: data.business.id,
             name: data.business.name,
             email: data.business.email,
-            whatsappNumber: data.business.whatsappNumber,
+            whatsappNumber: data.business.whatsappNumber || data.business.whatsapp_number,
             timezone: data.business.timezone,
-            isBotActive: data.business.isBotActive,
+            isBotActive: data.business.isBotActive ?? data.business.is_bot_active,
             role: "comercio",
             empresaId: data.business.id,
             avatar:

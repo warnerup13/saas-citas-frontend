@@ -61,7 +61,8 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen }) {
             </div>
             <div>
               <span className="font-display text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-                mycitas<span className="text-cyan-500 font-normal text-xs sm:text-sm">.glass</span>
+                mycitas
+                {/* <span className="text-cyan-500 font-normal text-xs sm:text-sm">.glass</span> */}
               </span>
               <span className="ml-1.5 rounded-md bg-brand-50 px-1.5 py-0.5 text-[9px] font-bold text-brand-700 uppercase tracking-wider border border-brand-200">
                 Admin

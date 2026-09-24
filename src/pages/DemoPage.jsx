@@ -16,6 +16,7 @@ import {
   HeartPulse,
   ChevronRight,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 const DEMO_NEGOCIOS = [
   {
@@ -67,6 +68,18 @@ const DEMO_NEGOCIOS = [
 
 export default function DemoPage() {
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
+
+  const handleIrAlPanel = () => {
+    if (!isAuthenticated || !user) {
+      navigate("/login");
+    } else if (user.role === "admin") {
+      navigate("/dashboard");
+    } else {
+      navigate("/comercio");
+    }
+  };
+
   const [negocioActivo, setNegocioActivo] = useState(DEMO_NEGOCIOS[0]);
   const [mensajes, setMensajes] = useState([]);
   const [inputText, setInputText] = useState("");
@@ -213,7 +226,8 @@ export default function DemoPage() {
                 <Bot size={20} />
               </div>
               <span className="font-display text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate">
-                mycitas<span className="text-cyan-500">.glass</span>
+                mycitas
+                {/* <span className="text-cyan-500">.glass</span> */}
               </span>
             </Link>
             <span className="hidden md:inline-flex glass-pill-cyan text-xs font-bold shrink-0">
@@ -229,7 +243,7 @@ export default function DemoPage() {
               Acceso
             </Link>
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={handleIrAlPanel}
               className="btn-primary text-xs sm:text-sm py-1.5 sm:py-2 px-3 sm:px-4"
             >
               Panel
@@ -322,7 +336,7 @@ export default function DemoPage() {
               <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 bg-gradient-to-b from-slate-50/50 to-white/40">
                 
                 <div className="mx-auto max-w-xs rounded-xl bg-cyan-50/80 border border-cyan-200/70 px-2.5 py-1 text-center text-[10px] sm:text-[11px] text-cyan-900 font-semibold shadow-xs">
-                  🔒 Procesado por el motor de IA de mycitas.glass
+                  🔒 Procesado por el motor de IA de mycitas
                 </div>
 
                 <AnimatePresence>
@@ -470,7 +484,7 @@ export default function DemoPage() {
                 </div>
                 <div>
                   <h3 className="text-xs sm:text-sm font-bold font-display text-slate-900">
-                    Motor de Decisión Nova Glass
+                    Motor de Decisión Nova 
                   </h3>
                   <p className="text-[11px] sm:text-xs text-slate-500">
                     Procesamiento de Lenguaje Natural en tiempo real
@@ -518,7 +532,7 @@ export default function DemoPage() {
             {/* Métricas de Rendimiento */}
             <div className="glass-panel p-4 sm:p-6">
               <h3 className="text-xs sm:text-sm font-bold font-display text-slate-900 mb-2.5 sm:mb-3">
-                Métricas Nova Glass
+                Métricas Nova 
               </h3>
               <div className="grid grid-cols-2 gap-2 sm:gap-3 text-center">
                 <div className="rounded-2xl bg-white/70 border border-white p-2.5 sm:p-3 shadow-xs">
@@ -541,7 +555,7 @@ export default function DemoPage() {
 
               <div className="mt-4 sm:mt-5">
                 <button
-                  onClick={() => navigate("/dashboard")}
+                  onClick={handleIrAlPanel}
                   className="btn-primary w-full py-2.5 sm:py-3 text-xs sm:text-sm font-bold flex items-center justify-center gap-2"
                 >
                   Configurar tu Propio Bot
