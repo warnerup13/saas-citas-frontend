@@ -1,4 +1,4 @@
-name: Deploy Backend to Contabo
+name: Deploy Frontend to Contabo
 
 on:
   push:
