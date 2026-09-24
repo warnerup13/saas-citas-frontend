@@ -8,11 +8,11 @@ services:
         VITE_API_PROD_URL: https://api.mycitas.online/api
     container_name: mycitas-frontend
     restart: unless-stopped
-    #ports:
-    #  - "80:80"
-    networks:
-      - saas_network
-
 networks:
-  saas_network:
+  default:
+    name: saas_network
     external: true
+    #ports:
+    # - "80:80"
+    # Si ya tienes otro servicio usando el puerto 80 (ej. un reverse proxy Traefik/Nginx en el host),
+    # puedes cambiar "80:80" por "3001:80" o "5173:80"
