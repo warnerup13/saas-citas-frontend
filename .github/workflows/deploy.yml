@@ -1,0 +1,21 @@
+name: Deploy Backend to Contabo
+
+on:
+  push:
+    branches:
+      - desarrollo
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conectar por SSH y actualizar contenedores
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/saas-citas-frontend
+            git pull origin desarrollo
+            docker compose -f docker-compose.yml up -d --build
