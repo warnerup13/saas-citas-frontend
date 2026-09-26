@@ -32,7 +32,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
 
 
-  
+
   // Si el usuario ya está autenticado, redirigir automáticamente a su panel correspondiente
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -55,6 +55,8 @@ export default function LoginPage() {
       
       setPassword("admin123");
     }
+
+    
   };
 
   const handleSubmit = async (e) => {
