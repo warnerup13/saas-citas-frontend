@@ -31,6 +31,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+
+  
   // Si el usuario ya está autenticado, redirigir automáticamente a su panel correspondiente
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -50,6 +52,7 @@ export default function LoginPage() {
       setPassword("password123");
     } else {
       setEmail("admin@saas.com");
+      
       setPassword("admin123");
     }
   };
