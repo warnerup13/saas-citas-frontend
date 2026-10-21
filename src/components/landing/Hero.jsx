@@ -157,9 +157,6 @@ export default function Hero({ irAlPanel }) {
                   JW
                 </span> */}
               </h1>
-              <p className="text-xs sm:text-base font-semibold uppercase tracking-wider sm:tracking-widest text-slate-500">
-                Automated WhatsApp Engine & Calendar Sync
-              </p>
             </div>
 
             <p className="mt-4 sm:mt-6 text-sm sm:text-lg text-slate-600 leading-relaxed max-w-xl">

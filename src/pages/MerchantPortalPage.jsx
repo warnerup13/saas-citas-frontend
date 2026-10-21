@@ -15,6 +15,8 @@ import {
   Info,
   Save,
   RefreshCw,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useBusiness } from "../context/BusinessContext";
@@ -67,6 +69,27 @@ export default function MerchantPortalPage() {
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [isUpdatingBot, setIsUpdatingBot] = useState(false);
   const [isAddingHoliday, setIsAddingHoliday] = useState(false);
+  const [citasCalendar, setCitasCalendar] = useState([]);
+  const [isLoadingCitas, setIsLoadingCitas] = useState(false);
+  const [calendarEmailReal, setCalendarEmailReal] = useState(null);
+  const [mostrarTodasCitas, setMostrarTodasCitas] = useState(false);
+  const LIMITE_CITAS = 6;
+
+  // Cargar citas reales de Google Calendar
+  const cargarCitasCalendar = async () => {
+    setIsLoadingCitas(true);
+    try {
+      const res = await settingsService.getCalendarAppointments(20);
+      if (res?.appointments) {
+        setCitasCalendar(res.appointments);
+        if (res.calendarId) setCalendarEmailReal(res.calendarId);
+      }
+    } catch (err) {
+      console.log("Modo offline o error al consultar citas de Google Calendar:", err?.message);
+    } finally {
+      setIsLoadingCitas(false);
+    }
+  };
 
   // Cargar datos iniciales del backend si hay token
   const cargarDatosBackend = async () => {
@@ -96,6 +119,9 @@ export default function MerchantPortalPage() {
     } catch (err) {
       console.log("Modo offline o backend sin feriados:", err?.message);
     }
+
+    // 3. Cargar Citas en vivo de Google Calendar
+    await cargarCitasCalendar();
   };
 
   useEffect(() => {
@@ -234,19 +260,26 @@ export default function MerchantPortalPage() {
     navigate("/login");
   };
 
-  const citasHoyCalendar = [
-    { hora: "10:30 AM", servicio: "Corte de Cabello", cliente: "Carlos Méndez", estado: "Confirmada por Bot" },
-    { hora: "01:00 PM", servicio: "Corte + Barba", cliente: "Andrés Restrepo", estado: "Confirmada por Bot" },
-    { hora: "04:15 PM", servicio: "Corte de Cabello", cliente: "Mateo Giraldo", estado: "Confirmada por Bot" },
-  ];
-
-  const calendarEmail = user?.email || empresaActual?.googleCalendarEmail || "";
+  const calendarEmail = calendarEmailReal || user?.email || empresaActual?.googleCalendarEmail || "";
 
   const handleOpenCalendar = () => {
     if (calendarEmail) {
       window.open(`https://calendar.google.com/calendar/r?authuser=${encodeURIComponent(calendarEmail)}`, "_blank");
     } else {
       window.open("https://calendar.google.com", "_blank");
+    }
+  };
+
+  const formatearFechaHora = (isoStr) => {
+    if (!isoStr) return { fecha: "", hora: "" };
+    try {
+      const d = new Date(isoStr);
+      return {
+        fecha: d.toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" }),
+        hora: d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+    } catch {
+      return { fecha: isoStr, hora: "" };
     }
   };
 
@@ -380,56 +413,132 @@ export default function MerchantPortalPage() {
                     Tu Google Calendar
                   </h2>
                   <span className="glass-pill-cyan text-[10px]">
-                    <CheckCircle2 size={11} className="text-cyan-600" /> Sync
+                    <CheckCircle2 size={11} className="text-cyan-600" /> Sync En Vivo
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5 truncate">
-                  Vinculado: <strong className="text-brand-700">{user?.email || empresaActual?.googleCalendarEmail || "agenda@gmail.com"}</strong>
+                  Vinculado: <strong className="text-brand-700">{calendarEmail || "agenda@gmail.com"}</strong>
                 </p>
               </div>
             </div>
 
-            <button
-              onClick={handleOpenCalendar}
-              className="btn-primary text-xs sm:text-sm py-2 px-4 self-start sm:self-auto cursor-pointer"
-            >
-              <Calendar size={14} />
-              Ver en Google Calendar
-              <ExternalLink size={12} />
-            </button>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                onClick={cargarCitasCalendar}
+                disabled={isLoadingCitas}
+                className="btn-secondary text-xs sm:text-sm py-2 px-3 cursor-pointer"
+                title="Refrescar citas desde Google Calendar"
+              >
+                <RefreshCw size={13} className={isLoadingCitas ? "animate-spin text-brand-600" : ""} />
+                <span className="hidden sm:inline">Actualizar</span>
+              </button>
+
+              <button
+                onClick={handleOpenCalendar}
+                className="btn-primary text-xs sm:text-sm py-2 px-4 cursor-pointer"
+              >
+                <Calendar size={14} />
+                Ver en Calendar
+                <ExternalLink size={12} />
+              </button>
+            </div>
           </div>
 
           {/* Citas sincronizadas */}
           <div className="mt-4 sm:mt-5">
-            <h3 className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 sm:mb-3">
-              Próximas citas sincronizadas en tu agenda:
-            </h3>
-
-            <div className="grid gap-2.5 sm:gap-3 sm:grid-cols-3">
-              {citasHoyCalendar.map((cita, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-2xl border border-white/90 bg-white/70 p-3.5 sm:p-4 shadow-xs hover:bg-white hover:shadow-glass transition-all"
-                >
-                  <div className="flex items-center justify-between mb-1.5 sm:mb-2">
-                    <span className="glass-pill-brand text-[10px] font-bold py-0.5 px-2">
-                      <Clock size={11} />
-                      {cita.hora}
-                    </span>
-                    <span className="text-[10px] sm:text-[11px] text-emerald-600 font-bold">
-                      ● Sync OK
-                    </span>
-                  </div>
-                  <p className="text-xs sm:text-sm font-bold text-slate-900 truncate">{cita.servicio}</p>
-                  <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 truncate">Cliente: {cita.cliente}</p>
-                </div>
-              ))}
+            <div className="flex items-center justify-between mb-2.5 sm:mb-3">
+              <h3 className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                Próximas citas agendadas ({citasCalendar.length}):
+              </h3>
+              {isLoadingCitas && (
+                <span className="text-[11px] text-brand-600 flex items-center gap-1 font-semibold">
+                  <RefreshCw size={11} className="animate-spin" /> Sincronizando con Google...
+                </span>
+              )}
             </div>
+
+            {citasCalendar.length === 0 && !isLoadingCitas ? (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
+                <CalendarDays size={28} className="mx-auto text-slate-300 mb-2" />
+                <p className="text-xs sm:text-sm font-semibold text-slate-600">No hay citas próximas en tu Google Calendar</p>
+                <p className="text-[11px] sm:text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                  Cuando un cliente agende una cita mediante WhatsApp, se sincronizará automáticamente aquí y en tu calendario.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-2.5 sm:gap-3 sm:grid-cols-3">
+                  {(mostrarTodasCitas ? citasCalendar : citasCalendar.slice(0, LIMITE_CITAS)).map((cita) => {
+                    const fh = formatearFechaHora(cita.start);
+                    return (
+                      <div
+                        key={cita.id}
+                        className="rounded-2xl border border-white/90 bg-white/70 p-3.5 sm:p-4 shadow-xs hover:bg-white hover:shadow-glass transition-all flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5 sm:mb-2 gap-1">
+                            <span className="glass-pill-brand text-[10px] font-bold py-0.5 px-2 truncate">
+                              <Clock size={11} className="shrink-0" />
+                              {fh.fecha ? `${fh.fecha} · ${fh.hora}` : cita.start}
+                            </span>
+                            <span className="text-[10px] sm:text-[11px] text-emerald-600 font-bold shrink-0">
+                              ● Agendada
+                            </span>
+                          </div>
+                          <p className="text-xs sm:text-sm font-bold text-slate-900 truncate" title={cita.service}>
+                            {cita.service}
+                          </p>
+                          <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 truncate">
+                            📱 {cita.clientPhone}
+                          </p>
+                        </div>
+
+                        {cita.htmlLink && (
+                          <div className="mt-2.5 pt-2 border-t border-slate-100 flex justify-end">
+                            <a
+                              href={cita.htmlLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[11px] text-brand-600 hover:text-brand-700 font-semibold"
+                            >
+                              Abrir cita <ExternalLink size={10} />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Botón desplegable para ver todas las citas */}
+                {citasCalendar.length > LIMITE_CITAS && (
+                  <div className="mt-3.5 flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-slate-200/60">
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      Mostrando {mostrarTodasCitas ? citasCalendar.length : LIMITE_CITAS} de {citasCalendar.length} citas
+                    </span>
+                    <button
+                      onClick={() => setMostrarTodasCitas(!mostrarTodasCitas)}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-brand-700 hover:text-brand-800 bg-brand-50 hover:bg-brand-100 px-3.5 py-1.5 rounded-xl border border-brand-200/60 transition-all cursor-pointer shadow-xs active:scale-95"
+                    >
+                      {mostrarTodasCitas ? (
+                        <>
+                          <ChevronUp size={14} /> Mostrar solo las {LIMITE_CITAS} primeras
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown size={14} /> Desplegar todas (+{citasCalendar.length - LIMITE_CITAS} citas)
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
 
             <div className="mt-3.5 sm:mt-4 rounded-2xl bg-cyan-50/70 border border-cyan-200/70 p-3 sm:p-3.5 flex items-start gap-2.5 text-xs text-cyan-900">
               <Info size={15} className="text-cyan-600 shrink-0 mt-0.5" />
               <span className="leading-relaxed">
-                <strong>Tip de automatización:</strong> Cualquier bloqueo en tu Google Calendar hará que el bot respete ese espacio y no ofrezca ese horario a los clientes.
+                <strong>Tip de sincronización:</strong> Las citas se leen en tiempo real de Google Calendar. Cualquier bloqueo de agenda que hagas en Google Calendar será respetado inmediatamente por el bot de WhatsApp.
               </span>
             </div>
           </div>

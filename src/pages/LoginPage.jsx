@@ -26,8 +26,8 @@ export default function LoginPage() {
 
   const [activeTab, setActiveTab] = useState("comercio"); // 'comercio' | 'admin'
   const [selectedEmpresaId, setSelectedEmpresaId] = useState(1);
-  const [email, setEmail] = useState("admin@negocio.com");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -48,12 +48,12 @@ export default function LoginPage() {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (tab === "comercio") {
-      setEmail("admin@negocio.com");
-      setPassword("password123");
+      setEmail("");
+      setPassword("");
     } else {
-      setEmail("admin@saas.com");
+      setEmail("");
       
-      setPassword("admin123");
+      setPassword("");
     }
 
     

@@ -230,7 +230,20 @@ export const businessService = {
       return response.data;
     }
   },
+
+  /**
+   * Obtiene las próximas citas de Google Calendar para un negocio específico (administradores)
+   * @param {string|number} id - ID del negocio
+   * @param {number} [maxResults=20]
+   */
+  async getCalendarAppointments(id, maxResults = 20) {
+    const response = await apiClient.get(`/business/${id}/calendar-appointments`, {
+      params: { maxResults },
+    });
+    return response.data;
+  },
 };
 
 export default businessService;
+
 

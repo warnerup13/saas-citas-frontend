@@ -139,6 +139,19 @@ export const settingsService = {
     const response = await apiClient.delete(`/settings/holidays/${id}`);
     return response.data;
   },
+
+  /**
+   * Obtiene las próximas citas sincronizadas en Google Calendar para el comercio autenticado
+   * @param {number} [maxResults=20]
+   * @returns {Promise<{ success: boolean, count: number, calendarId: string, appointments: Array }>}
+   */
+  async getCalendarAppointments(maxResults = 20) {
+    const response = await apiClient.get("/settings/calendar-appointments", {
+      params: { maxResults },
+    });
+    return response.data;
+  },
 };
 
 export default settingsService;
+
