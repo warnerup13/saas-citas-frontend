@@ -151,6 +151,31 @@ export const settingsService = {
     });
     return response.data;
   },
+
+  /**
+   * Obtiene la lista de clientes registrados por el bot de WhatsApp
+   * @param {number} [limit=100]
+   * @returns {Promise<{ success: boolean, count: number, data: Array }>}
+   */
+  async getClients(limit = 100) {
+    const response = await apiClient.get("/settings/clients", {
+      params: { limit },
+    });
+    return response.data;
+  },
+
+  /**
+   * Obtiene la conversación completa entre el bot y un cliente
+   * @param {string} phone
+   * @param {number} [limit=150]
+   * @returns {Promise<{ success: boolean, count: number, phone: string, data: Array }>}
+   */
+  async getConversation(phone, limit = 150) {
+    const response = await apiClient.get(`/settings/messages/${encodeURIComponent(phone)}`, {
+      params: { limit },
+    });
+    return response.data;
+  },
 };
 
 export default settingsService;
