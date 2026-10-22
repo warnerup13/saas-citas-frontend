@@ -103,6 +103,7 @@ export const businessService = {
       email: businessData.email?.trim(),
       password: businessData.password,
       whatsapp_number: businessData.whatsapp_number || businessData.whatsappNumber || businessData.telefono,
+      contact_phone: businessData.contact_phone || businessData.contactPhone || businessData.telefonoContacto || businessData.telefonoDueno || "",
       timezone: businessData.timezone || "America/Caracas",
       calendar_email: businessData.calendar_email || businessData.googleCalendarEmail || "",
     };

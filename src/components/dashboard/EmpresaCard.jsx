@@ -41,10 +41,16 @@ export default function EmpresaCard({ empresa, onToggle, onAbrir }) {
                 <Scissors size={12} className="text-slate-400 shrink-0" />
                 <span className="truncate">{empresa.rubro}</span>
               </span>
-              <span className="flex items-center gap-1 font-medium">
+              <span className="flex items-center gap-1 font-medium" title="Número del Bot de WhatsApp">
                 <Phone size={12} className="text-slate-400 shrink-0" />
                 <span>{empresa.telefono}</span>
               </span>
+              {empresa.contact_phone && (
+                <span className="flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200/60 text-[11px]" title="Teléfono de contacto directo del dueño">
+                  <Phone size={11} className="text-emerald-600 shrink-0" />
+                  <span>Dueño: {empresa.contact_phone}</span>
+                </span>
+              )}
               {empresa.googleCalendarEmail && (
                 <span className="flex items-center gap-1 text-cyan-700 bg-cyan-50/80 px-2 py-0.5 rounded-lg border border-cyan-200/60 font-semibold text-[11px] max-w-full truncate">
                   <CalendarCheck size={12} className="text-cyan-600 shrink-0" />

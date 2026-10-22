@@ -43,6 +43,7 @@ export default function DashboardPage() {
     password: "password123",
     rubro: "Peluquería",
     telefono: "+58 412 123 4567",
+    telefonoContacto: "",
     googleCalendarEmail: "",
   });
 
@@ -70,6 +71,7 @@ export default function DashboardPage() {
         password: "password123",
         rubro: "Peluquería",
         telefono: "+58 412 123 4567",
+        telefonoContacto: "",
         googleCalendarEmail: "",
       });
       setIsModalOpen(false);
@@ -283,16 +285,35 @@ export default function DashboardPage() {
             </select>
           </div>
 
-          <div>
-            <label className="label-base">Teléfono de WhatsApp del Local</label>
-            <input
-              type="text"
-              required
-              value={nuevoNegocio.telefono}
-              onChange={(e) => setNuevoNegocio({ ...nuevoNegocio, telefono: e.target.value })}
-              placeholder="+58 412 123 4567"
-              className="input-base"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className="label-base">WhatsApp del Local (Bot) <span className="text-red-500">*</span></label>
+              <input
+                type="text"
+                required
+                value={nuevoNegocio.telefono}
+                onChange={(e) => setNuevoNegocio({ ...nuevoNegocio, telefono: e.target.value })}
+                placeholder="+58 412 123 4567"
+                className="input-base"
+              />
+              <p className="mt-1 text-[10px] text-slate-500 leading-normal">
+                Número por donde atiende el bot de WhatsApp.
+              </p>
+            </div>
+
+            <div>
+              <label className="label-base">Teléfono Dueño / Encargado</label>
+              <input
+                type="text"
+                value={nuevoNegocio.telefonoContacto}
+                onChange={(e) => setNuevoNegocio({ ...nuevoNegocio, telefonoContacto: e.target.value })}
+                placeholder="+58 414 987 6543"
+                className="input-base"
+              />
+              <p className="mt-1 text-[10px] text-slate-500 leading-normal">
+                Se incluye en la confirmación para contacto directo.
+              </p>
+            </div>
           </div>
 
           <div>

@@ -16,6 +16,7 @@ export const normalizeBusiness = (b) => {
     nombre: b.name || b.nombre || "Comercio",
     rubro: b.category || b.rubro || "Servicios",
     telefono: b.whatsapp_number || b.whatsappNumber || b.telefono || "No especificado",
+    contact_phone: b.contact_phone || b.contactPhone || b.telefonoContacto || b.telefonoDueno || "",
     email: b.email || "",
     googleCalendarEmail: b.calendar_email || b.googleCalendarEmail || "",
     activo: b.is_bot_active !== undefined ? Boolean(b.is_bot_active) : (b.activo !== undefined ? Boolean(b.activo) : true),
@@ -130,6 +131,7 @@ export function BusinessProvider({ children }) {
         email: nueva.email || `${nueva.nombre.toLowerCase().replace(/\s+/g, '')}@negocio.com`,
         password: nueva.password || "negocio123",
         whatsapp_number: nueva.telefono,
+        contact_phone: nueva.telefonoContacto || nueva.contact_phone || "",
         calendar_email: nueva.googleCalendarEmail,
         timezone: nueva.timezone || "America/Caracas",
       });
@@ -149,6 +151,7 @@ export function BusinessProvider({ children }) {
       nombre: nueva.nombre,
       rubro: nueva.rubro,
       telefono: nueva.telefono,
+      contact_phone: nueva.telefonoContacto || nueva.contact_phone || "",
       email: nueva.email || "",
       googleCalendarEmail: nueva.googleCalendarEmail || "",
       activo: true,

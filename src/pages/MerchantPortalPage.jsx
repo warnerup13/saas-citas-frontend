@@ -33,6 +33,7 @@ import {
   Check,
   X,
   AlertCircle,
+  Settings,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useBusiness } from "../context/BusinessContext";
@@ -93,6 +94,18 @@ export default function MerchantPortalPage() {
   const [calendarEmailReal, setCalendarEmailReal] = useState(null);
   const [mostrarTodasCitas, setMostrarTodasCitas] = useState(false);
   const LIMITE_CITAS = 6;
+
+  // Configuración de cuenta de Google Calendar (solución para múltiples cuentas en el navegador)
+  const [cuentaGoogleModo, setCuentaGoogleModo] = useState(
+    () => localStorage.getItem("gcal_account_mode") || "email"
+  );
+  const [cuentaGoogleIndex, setCuentaGoogleIndex] = useState(
+    () => localStorage.getItem("gcal_account_index") || "1"
+  );
+  const [correoGoogleManual, setCorreoGoogleManual] = useState(
+    () => localStorage.getItem("gcal_account_email") || ""
+  );
+  const [mostrarModalConfigCalendar, setMostrarModalConfigCalendar] = useState(false);
 
   // Estados para Clientes y Conversaciones de WhatsApp
   const [clientes, setClientes] = useState([]);
@@ -324,6 +337,7 @@ export default function MerchantPortalPage() {
           id: h.id,
           fecha: h.closed_date,
           motivo: h.reason,
+          source: h.source || "manual",
         }));
         setFeriados(mappedHolidays);
       }
@@ -515,13 +529,63 @@ export default function MerchantPortalPage() {
     navigate("/login");
   };
 
-  const calendarEmail = calendarEmailReal || user?.email || empresaActual?.googleCalendarEmail || "";
+  // Correo de Google Calendar resuelto
+  const calendarEmailBase =
+    correoGoogleManual.trim() ||
+    (calendarEmailReal && calendarEmailReal.includes("@") && !calendarEmailReal.includes("saas.com") && calendarEmailReal !== "primary" ? calendarEmailReal : "") ||
+    (empresaActual?.googleCalendarEmail && empresaActual.googleCalendarEmail.includes("@") ? empresaActual.googleCalendarEmail : "") ||
+    (user?.email && user.email.includes("@gmail.com") ? user.email : "");
+
+  const calendarEmail = calendarEmailBase || "agenda@gmail.com";
+
+  // Genera la URL de Google Calendar según la configuración de cuentas del navegador
+  const getGoogleCalendarUrl = (customPath = "calendar/r") => {
+    // 1. Modo Selector de Cuentas de Google (Account Chooser)
+    if (cuentaGoogleModo === "chooser") {
+      const emailParam = calendarEmailBase ? `&Email=${encodeURIComponent(calendarEmailBase)}` : "";
+      return `https://accounts.google.com/AccountChooser?continue=${encodeURIComponent(`https://calendar.google.com/${customPath}`)}${emailParam}`;
+    }
+
+    // 2. Modo por índice de cuenta en el navegador (/u/0/, /u/1/, /u/2/)
+    if (cuentaGoogleModo === "index") {
+      return `https://calendar.google.com/calendar/u/${cuentaGoogleIndex}/r`;
+    }
+
+    // 3. Modo por correo electrónico específico
+    if (calendarEmailBase) {
+      return `https://calendar.google.com/calendar/u/${encodeURIComponent(calendarEmailBase)}/r?authuser=${encodeURIComponent(calendarEmailBase)}`;
+    }
+
+    // Fallback: Selector de Cuentas para no abrir ciegamente la cuenta 0 si el usuario tiene varias
+    return `https://accounts.google.com/AccountChooser?continue=${encodeURIComponent("https://calendar.google.com/calendar/r")}`;
+  };
 
   const handleOpenCalendar = () => {
-    if (calendarEmail) {
-      window.open(`https://calendar.google.com/calendar/r?authuser=${encodeURIComponent(calendarEmail)}`, "_blank");
-    } else {
-      window.open("https://calendar.google.com", "_blank");
+    const url = getGoogleCalendarUrl();
+    window.open(url, "_blank");
+  };
+
+  // Modifica los enlaces de eventos individuales de Google Calendar
+  const getEventCalendarUrl = (htmlLink) => {
+    if (!htmlLink) return null;
+    try {
+      if (cuentaGoogleModo === "index") {
+        const url = new URL(htmlLink);
+        url.pathname = url.pathname.replace(/\/calendar\/event/, `/calendar/u/${cuentaGoogleIndex}/event`);
+        url.searchParams.set("authuser", cuentaGoogleIndex);
+        return url.toString();
+      }
+      if (cuentaGoogleModo === "chooser") {
+        return `https://accounts.google.com/AccountChooser?continue=${encodeURIComponent(htmlLink)}${calendarEmailBase ? `&Email=${encodeURIComponent(calendarEmailBase)}` : ""}`;
+      }
+      if (calendarEmailBase) {
+        const url = new URL(htmlLink);
+        url.searchParams.set("authuser", calendarEmailBase);
+        return url.toString();
+      }
+      return htmlLink;
+    } catch {
+      return htmlLink;
     }
   };
 
@@ -574,15 +638,26 @@ export default function MerchantPortalPage() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={handleOpenCalendar}
-              className="btn-secondary text-xs py-1.5 sm:py-2 px-2.5 sm:px-3.5"
-              aria-label="Abrir Google Calendar"
-            >
-              <Calendar size={13} className="text-brand-600" />
-              <span className="hidden sm:inline">Google Calendar</span>
-              <ExternalLink size={11} className="text-slate-400" />
-            </button>
+            <div className="inline-flex rounded-xl shadow-xs border border-slate-200/80 bg-white/90 overflow-hidden">
+              <button
+                onClick={handleOpenCalendar}
+                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold text-slate-700 hover:text-brand-600 hover:bg-slate-50 transition-colors cursor-pointer"
+                aria-label="Abrir Google Calendar"
+                title={`Abrir Google Calendar (${cuentaGoogleModo === 'index' ? `Cuenta ${Number(cuentaGoogleIndex) + 1}` : (calendarEmailBase || 'Selector')})`}
+              >
+                <Calendar size={13} className="text-brand-600" />
+                <span className="hidden sm:inline">Google Calendar</span>
+                <ExternalLink size={11} className="text-slate-400" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setMostrarModalConfigCalendar(true)}
+                className="px-2 py-1.5 sm:py-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors border-l border-slate-200 cursor-pointer"
+                title="Configurar con cuál de tus 3 cuentas de Google abrir"
+              >
+                <Settings size={12} />
+              </button>
+            </div>
 
             <button
               onClick={handleLogout}
@@ -598,17 +673,17 @@ export default function MerchantPortalPage() {
 
       {/* Selector de Pestañas Nova Glass */}
       <div className="mx-auto max-w-5xl px-3.5 sm:px-6 pt-4 sm:pt-6">
-        <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white/70 backdrop-blur-md border border-white/90 shadow-xs w-full sm:w-fit">
+        <div className="flex items-center gap-1.5 sm:gap-2 p-1.5 rounded-2xl bg-white/70 backdrop-blur-md border border-white/90 shadow-xs w-full sm:w-fit overflow-x-auto scrollbar-none">
           <button
             onClick={() => setTabActiva("configuracion")}
-            className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            className={`flex-1 sm:flex-initial shrink-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
               tabActiva === "configuracion"
                 ? "bg-slate-900 text-white shadow-sm"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60"
             }`}
           >
             <Sliders size={15} />
-            <span>Configuración y Horarios</span>
+            <span>Configuración<span className="hidden sm:inline"> y Horarios</span></span>
           </button>
 
           <button
@@ -616,7 +691,7 @@ export default function MerchantPortalPage() {
               setTabActiva("servicios");
               cargarServicios();
             }}
-            className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            className={`flex-1 sm:flex-initial shrink-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
               tabActiva === "servicios"
                 ? "bg-slate-900 text-white shadow-sm"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60"
@@ -640,14 +715,14 @@ export default function MerchantPortalPage() {
               setTabActiva("conversaciones");
               cargarClientes();
             }}
-            className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            className={`flex-1 sm:flex-initial shrink-0 inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap ${
               tabActiva === "conversaciones"
                 ? "bg-slate-900 text-white shadow-sm"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60"
             }`}
           >
             <MessageSquare size={15} className={tabActiva === "conversaciones" ? "text-emerald-400" : "text-emerald-600"} />
-            <span>Clientes y Mensajes</span>
+            <span>Clientes<span className="hidden sm:inline"> y Mensajes</span></span>
             {clientes.length > 0 && (
               <span className="ml-0.5 rounded-full bg-emerald-500/20 text-emerald-700 font-extrabold px-2 py-0.5 text-[10px]">
                 {clientes.length}
@@ -739,31 +814,60 @@ export default function MerchantPortalPage() {
                     <CheckCircle2 size={11} className="text-cyan-600" /> Sync En Vivo
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5 truncate">
-                  Vinculado: <strong className="text-brand-700">{calendarEmail || "agenda@gmail.com"}</strong>
-                </p>
+                <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                  <p className="text-xs text-slate-500 truncate">
+                    Vinculado: <strong className="text-brand-700">
+                      {cuentaGoogleModo === "index"
+                        ? `Cuenta ${Number(cuentaGoogleIndex) + 1} de Google (/u/${cuentaGoogleIndex})`
+                        : cuentaGoogleModo === "chooser"
+                        ? "Selector de cuentas de Google"
+                        : (calendarEmailBase || "agenda@gmail.com")}
+                    </strong>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setMostrarModalConfigCalendar(true)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-600 hover:text-brand-800 hover:underline cursor-pointer"
+                    title="Configurar con cuál de tus 3 cuentas de Google abrir"
+                  >
+                    <Settings size={11} /> Cambiar cuenta
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-start sm:self-auto">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap self-start sm:self-auto w-full sm:w-auto justify-between sm:justify-end">
               <button
+                type="button"
                 onClick={cargarCitasCalendar}
                 disabled={isLoadingCitas}
-                className="btn-secondary text-xs sm:text-sm py-2 px-3 cursor-pointer"
+                className="btn-secondary text-xs sm:text-sm py-2 px-3 cursor-pointer shrink-0"
                 title="Refrescar citas desde Google Calendar"
               >
                 <RefreshCw size={13} className={isLoadingCitas ? "animate-spin text-brand-600" : ""} />
                 <span className="hidden sm:inline">Actualizar</span>
               </button>
 
-              <button
-                onClick={handleOpenCalendar}
-                className="btn-primary text-xs sm:text-sm py-2 px-4 cursor-pointer"
-              >
-                <Calendar size={14} />
-                Ver en Calendar
-                <ExternalLink size={12} />
-              </button>
+              <div className="inline-flex rounded-xl shadow-xs overflow-hidden shrink-0">
+                <button
+                  type="button"
+                  onClick={handleOpenCalendar}
+                  className="btn-primary text-xs sm:text-sm py-2 px-3 sm:px-4 cursor-pointer rounded-r-none"
+                  title="Abrir Google Calendar en la cuenta seleccionada"
+                >
+                  <Calendar size={14} />
+                  <span>Ver en Calendar</span>
+                  <ExternalLink size={12} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMostrarModalConfigCalendar(true)}
+                  className="bg-brand-700 hover:bg-brand-800 text-white px-2.5 py-2 border-l border-brand-500/50 cursor-pointer transition-colors"
+                  title="Configurar cuenta de Google (Cuenta 1, Cuenta 2, Cuenta 3 o Selector)"
+                >
+                  <Settings size={14} />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -819,7 +923,7 @@ export default function MerchantPortalPage() {
                         {cita.htmlLink && (
                           <div className="mt-2.5 pt-2 border-t border-slate-100 flex justify-end">
                             <a
-                              href={cita.htmlLink}
+                              href={getEventCalendarUrl(cita.htmlLink)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-[11px] text-brand-600 hover:text-brand-700 font-semibold"
@@ -948,7 +1052,7 @@ export default function MerchantPortalPage() {
 
                   {/* Horario Desde / Hasta */}
                   {config.abre ? (
-                    <div className="flex items-center gap-1.5 sm:gap-2 text-xs pl-14 sm:pl-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 text-xs pl-11 sm:pl-0 flex-wrap sm:flex-nowrap">
                       <span className="text-slate-500 font-semibold">Desde:</span>
                       <input
                         type="time"
@@ -956,7 +1060,7 @@ export default function MerchantPortalPage() {
                         onChange={(e) =>
                           handleCambioDia(dia.clave, true, e.target.value, config.hasta)
                         }
-                        className="rounded-xl border border-white bg-white/90 px-2 py-1 font-bold text-slate-800 outline-none focus:border-brand-500 text-xs shadow-xs"
+                        className="rounded-xl border border-white bg-white/90 px-2 py-1 font-bold text-slate-800 outline-none focus:border-brand-500 text-xs shadow-xs min-w-[76px] max-w-[92px]"
                       />
                       <span className="text-slate-500 font-semibold">Hasta:</span>
                       <input
@@ -965,11 +1069,11 @@ export default function MerchantPortalPage() {
                         onChange={(e) =>
                           handleCambioDia(dia.clave, true, config.desde, e.target.value)
                         }
-                        className="rounded-xl border border-white bg-white/90 px-2 py-1 font-bold text-slate-800 outline-none focus:border-brand-500 text-xs shadow-xs"
+                        className="rounded-xl border border-white bg-white/90 px-2 py-1 font-bold text-slate-800 outline-none focus:border-brand-500 text-xs shadow-xs min-w-[76px] max-w-[92px]"
                       />
                     </div>
                   ) : (
-                    <span className="text-xs text-slate-400 italic pl-14 sm:pl-0">
+                    <span className="text-xs text-slate-400 italic pl-11 sm:pl-0">
                       El bot pausará reservas este día
                     </span>
                   )}
@@ -1042,35 +1146,58 @@ export default function MerchantPortalPage() {
                 No tienes días cerrados especiales programados.
               </p>
             ) : (
-              feriados.map((cierre) => (
-                <div
-                  key={cierre.id}
-                  className="flex items-center justify-between rounded-2xl border border-amber-200/80 bg-amber-50/70 p-3 sm:p-3.5 min-w-0"
-                >
-                  <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 pr-2">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 font-bold">
-                      <Calendar size={14} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-slate-900">
-                        {cierre.fecha}
-                      </p>
-                      <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate">
-                        {cierre.motivo || "Cerrado"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleEliminarCierre(cierre.id)}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                    title="Eliminar día cerrado"
-                    aria-label="Eliminar día cerrado"
+              feriados.map((cierre) => {
+                const isGoogleCalendar = cierre.source === "google_calendar" || String(cierre.id).startsWith("gcal_");
+                return (
+                  <div
+                    key={cierre.id}
+                    className="flex items-center justify-between rounded-2xl border border-amber-200/80 bg-amber-50/70 p-3 sm:p-3.5 min-w-0"
                   >
-                    <Trash2 size={15} />
-                  </button>
-                </div>
-              ))
+                    <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 pr-2">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 font-bold">
+                        <Calendar size={14} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-xs font-bold text-slate-900">
+                            {cierre.fecha}
+                          </p>
+                          {isGoogleCalendar && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 px-2 py-0.5 text-[10px] font-semibold">
+                              Google Calendar
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] sm:text-xs text-amber-900 font-medium truncate">
+                          {cierre.motivo || "Cerrado"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {isGoogleCalendar ? (
+                      <a
+                        href={buildGoogleCalendarUrl()}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex h-8 px-2.5 shrink-0 items-center gap-1 rounded-xl text-xs font-semibold text-emerald-700 hover:text-emerald-900 hover:bg-emerald-100/70 transition-colors cursor-pointer"
+                        title="Gestionado desde tu Google Calendar (Haz clic para ver o editar)"
+                      >
+                        <ExternalLink size={13} />
+                        <span className="hidden sm:inline">Ver en Calendar</span>
+                      </a>
+                    ) : (
+                      <button
+                        onClick={() => handleEliminarCierre(cierre.id)}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                        title="Eliminar día cerrado"
+                        aria-label="Eliminar día cerrado"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
         </section>
@@ -1173,11 +1300,11 @@ export default function MerchantPortalPage() {
             {/* Barra de Búsqueda y Filtros */}
             <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-slate-200/60">
               {/* Filtros por pestaña/pill */}
-              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100/80 border border-slate-200/50 text-xs">
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100/80 border border-slate-200/50 text-xs overflow-x-auto scrollbar-none max-w-full">
                 <button
                   type="button"
                   onClick={() => setFiltroServicio("todos")}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                     filtroServicio === "todos"
                       ? "bg-white text-slate-900 shadow-xs"
                       : "text-slate-600 hover:text-slate-900"
@@ -1188,7 +1315,7 @@ export default function MerchantPortalPage() {
                 <button
                   type="button"
                   onClick={() => setFiltroServicio("activos")}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                     filtroServicio === "activos"
                       ? "bg-emerald-600 text-white shadow-xs"
                       : "text-slate-600 hover:text-emerald-700"
@@ -1199,7 +1326,7 @@ export default function MerchantPortalPage() {
                 <button
                   type="button"
                   onClick={() => setFiltroServicio("ocultos")}
-                  className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                     filtroServicio === "ocultos"
                       ? "bg-amber-600 text-white shadow-xs"
                       : "text-slate-600 hover:text-amber-800"
@@ -1210,7 +1337,7 @@ export default function MerchantPortalPage() {
               </div>
 
               {/* Input de Búsqueda */}
-              <div className="relative min-w-[220px]">
+              <div className="relative w-full sm:w-64">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
@@ -1635,7 +1762,7 @@ export default function MerchantPortalPage() {
                                 <span>{esBot ? '🤖 Bot de WhatsApp' : (clienteSeleccionado.name || 'Cliente')}</span>
                                 <span>{hora.hora ? `${hora.fecha} · ${hora.hora}` : ''}</span>
                               </div>
-                              <p className="whitespace-pre-line leading-relaxed text-[11px] sm:text-xs">
+                              <p className="whitespace-pre-line leading-relaxed text-[11px] sm:text-xs break-words">
                                 {msg.content}
                               </p>
                               {msg.message_type === 'confirmation' && (
@@ -1675,14 +1802,14 @@ export default function MerchantPortalPage() {
 
       {/* Modal para Crear / Editar Servicio */}
       {mostrarModalServicio && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
           <div
-            className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-glass-xl border border-white/90 relative overflow-hidden"
+            className="bg-white rounded-3xl max-w-lg w-full p-4 sm:p-7 shadow-glass-xl border border-white/90 relative overflow-hidden max-h-[92vh] flex flex-col"
             role="dialog"
             aria-modal="true"
           >
             {/* Header del Modal */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div className="flex items-center justify-between pb-3.5 sm:pb-4 border-b border-slate-100 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-glow-blue">
                   <Scissors size={18} />
@@ -1707,8 +1834,8 @@ export default function MerchantPortalPage() {
               </button>
             </div>
 
-            {/* Formulario */}
-            <form onSubmit={handleGuardarServicio} className="mt-5 space-y-4">
+            {/* Formulario con scroll interno para pantallas móviles */}
+            <form onSubmit={handleGuardarServicio} className="mt-4 space-y-4 overflow-y-auto pr-1 flex-1">
               {/* Campo Nombre */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -1745,7 +1872,7 @@ export default function MerchantPortalPage() {
                     />
                   </div>
                   {/* Botones rápidos de duración */}
-                  <div className="flex items-center gap-1 mt-1.5">
+                  <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                     {[15, 30, 45, 60, 90].map((min) => (
                       <button
                         key={min}
@@ -1833,7 +1960,7 @@ export default function MerchantPortalPage() {
               </div>
 
               {/* Botones de Acción */}
-              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100 shrink-0">
                 <button
                   type="button"
                   onClick={() => setMostrarModalServicio(false)}
@@ -1862,6 +1989,231 @@ export default function MerchantPortalPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Configurar Cuenta de Google Calendar (Solución Multi-Cuentas) */}
+      {mostrarModalConfigCalendar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+          <div
+            className="bg-white rounded-3xl max-w-lg w-full p-4 sm:p-7 shadow-glass-xl border border-white/90 relative overflow-hidden max-h-[92vh] flex flex-col"
+            role="dialog"
+            aria-modal="true"
+          >
+            {/* Header del Modal */}
+            <div className="flex items-center justify-between pb-3.5 sm:pb-4 border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-500 text-white shadow-glow-blue">
+                  <Calendar size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-display font-bold text-slate-900">
+                    Cuenta de Google Calendar
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Elige con cuál de tus cuentas de Google abrir el calendario en este navegador
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setMostrarModalConfigCalendar(false)}
+                className="h-8 w-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                aria-label="Cerrar modal"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Contenido / Opciones con scroll */}
+            <div className="mt-4 space-y-3.5 sm:space-y-4 overflow-y-auto pr-1 flex-1">
+              <div className="p-3 rounded-2xl bg-brand-50/80 border border-brand-100 text-xs text-brand-900">
+                <p className="leading-relaxed">
+                  💡 <strong>¿Tienes varias cuentas de Google en tu PC?</strong> Google por defecto abre siempre la cuenta principal. Aquí puedes forzar que abra la cuenta secundaria de tu negocio o activar el selector de cuentas.
+                </p>
+              </div>
+
+              {/* Opción 1: Selector de Cuenta de Google (Recomendado para múltiples cuentas) */}
+              <div
+                onClick={() => {
+                  setCuentaGoogleModo("chooser");
+                  localStorage.setItem("gcal_account_mode", "chooser");
+                }}
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                  cuentaGoogleModo === "chooser"
+                    ? "border-brand-500 bg-brand-50/40 ring-1 ring-brand-500 shadow-xs"
+                    : "border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/50"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="google_mode"
+                    checked={cuentaGoogleModo === "chooser"}
+                    onChange={() => {
+                      setCuentaGoogleModo("chooser");
+                      localStorage.setItem("gcal_account_mode", "chooser");
+                    }}
+                    className="mt-0.5 text-brand-600 focus:ring-brand-500"
+                  />
+                  <div>
+                    <p className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                      <span>Selector Oficial de Cuentas de Google (Recomendado)</span>
+                      <span className="glass-pill-cyan text-[9px]">Multi-Cuenta</span>
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                      Google te mostrará la pantalla con tus 3 cuentas para que elijas directamente la del negocio con un clic, sin abrir la cuenta equivocada.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Opción 2: Por Número de Cuenta en el Navegador (/u/0, /u/1, /u/2) */}
+              <div
+                onClick={() => {
+                  setCuentaGoogleModo("index");
+                  localStorage.setItem("gcal_account_mode", "index");
+                }}
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                  cuentaGoogleModo === "index"
+                    ? "border-brand-500 bg-brand-50/40 ring-1 ring-brand-500 shadow-xs"
+                    : "border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/50"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="google_mode"
+                    checked={cuentaGoogleModo === "index"}
+                    onChange={() => {
+                      setCuentaGoogleModo("index");
+                      localStorage.setItem("gcal_account_mode", "index");
+                    }}
+                    className="mt-0.5 text-brand-600 focus:ring-brand-500"
+                  />
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-bold text-slate-900">
+                      Por Posición de Cuenta en Google Chrome
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                      Abre directamente la cuenta según el orden en que iniciaste sesión en Google en este navegador:
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-2.5">
+                      {[
+                        { index: "0", label: "Cuenta 1", desc: "Principal" },
+                        { index: "1", label: "Cuenta 2", desc: "Secundaria" },
+                        { index: "2", label: "Cuenta 3", desc: "Tercera" },
+                      ].map((item) => (
+                        <button
+                          key={item.index}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCuentaGoogleModo("index");
+                            setCuentaGoogleIndex(item.index);
+                            localStorage.setItem("gcal_account_mode", "index");
+                            localStorage.setItem("gcal_account_index", item.index);
+                          }}
+                          className={`py-1.5 px-1.5 sm:px-2 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center ${
+                            cuentaGoogleModo === "index" && cuentaGoogleIndex === item.index
+                              ? "bg-brand-600 text-white border-brand-600 shadow-xs"
+                              : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                          }`}
+                        >
+                          <span className="block text-[10px] sm:text-[11px] truncate">{item.label}</span>
+                          <span className={`block text-[8px] sm:text-[9px] font-normal ${
+                            cuentaGoogleModo === "index" && cuentaGoogleIndex === item.index ? "text-brand-100" : "text-slate-400"
+                          }`}>{item.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Opción 3: Por Correo Específico de Google */}
+              <div
+                onClick={() => {
+                  setCuentaGoogleModo("email");
+                  localStorage.setItem("gcal_account_mode", "email");
+                }}
+                className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                  cuentaGoogleModo === "email"
+                    ? "border-brand-500 bg-brand-50/40 ring-1 ring-brand-500 shadow-xs"
+                    : "border-slate-200/80 bg-white hover:border-slate-300 hover:bg-slate-50/50"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name="google_mode"
+                    checked={cuentaGoogleModo === "email"}
+                    onChange={() => {
+                      setCuentaGoogleModo("email");
+                      localStorage.setItem("gcal_account_mode", "email");
+                    }}
+                    className="mt-0.5 text-brand-600 focus:ring-brand-500"
+                  />
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-bold text-slate-900">
+                      Por Correo de Google / Gmail Específico
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                      Indica el correo de Google Calendar al que debe saltar automáticamente:
+                    </p>
+
+                    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="email"
+                        value={correoGoogleManual}
+                        onChange={(e) => {
+                          setCorreoGoogleManual(e.target.value);
+                          localStorage.setItem("gcal_account_email", e.target.value.trim());
+                        }}
+                        placeholder={calendarEmailBase || "ej: negocio.citas@gmail.com"}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 shadow-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer con Botones */}
+            <div className="mt-4 sm:mt-6 pt-3 sm:pt-4 border-t border-slate-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  const url = getGoogleCalendarUrl();
+                  window.open(url, "_blank");
+                }}
+                className="btn-secondary text-xs py-2 px-3.5 cursor-pointer inline-flex items-center justify-center gap-1.5"
+                title="Abre el calendario en una nueva pestaña para probar la cuenta"
+              >
+                <ExternalLink size={13} />
+                <span>Probar Abrir Ahora</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem("gcal_account_mode", cuentaGoogleModo);
+                  localStorage.setItem("gcal_account_index", cuentaGoogleIndex);
+                  if (correoGoogleManual) {
+                    localStorage.setItem("gcal_account_email", correoGoogleManual.trim());
+                  }
+                  toast.success("Preferencia de Google Calendar guardada correctamente.");
+                  setMostrarModalConfigCalendar(false);
+                }}
+                className="btn-primary text-xs sm:text-sm py-2 px-5 cursor-pointer inline-flex items-center justify-center gap-1.5"
+              >
+                <Check size={14} />
+                <span>Listo / Guardar</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
