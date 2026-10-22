@@ -34,11 +34,13 @@ import {
   X,
   AlertCircle,
   Settings,
+  Share2,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useBusiness } from "../context/BusinessContext";
 import { useToast } from "../context/ToastContext";
 import { settingsService, servicesService } from "../services";
+import ShareBusinessModal from "../components/common/ShareBusinessModal";
 
 const DIAS_SEMANA = [
   { clave: "lun", nombre: "Lunes", diaNumero: 1 },
@@ -106,6 +108,7 @@ export default function MerchantPortalPage() {
     () => localStorage.getItem("gcal_account_email") || ""
   );
   const [mostrarModalConfigCalendar, setMostrarModalConfigCalendar] = useState(false);
+  const [mostrarModalCompartir, setMostrarModalCompartir] = useState(false);
 
   // Estados para Clientes y Conversaciones de WhatsApp
   const [clientes, setClientes] = useState([]);
@@ -658,6 +661,15 @@ export default function MerchantPortalPage() {
                 <Settings size={12} />
               </button>
             </div>
+
+            <button
+              onClick={() => setMostrarModalCompartir(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/80 transition-colors shadow-xs cursor-pointer"
+              title="Compartir enlace de WhatsApp y teléfono del bot/dueño"
+            >
+              <Share2 size={13} className="text-emerald-600" />
+              <span className="hidden sm:inline">Compartir WhatsApp</span>
+            </button>
 
             <button
               onClick={handleLogout}
@@ -2217,6 +2229,17 @@ export default function MerchantPortalPage() {
           </div>
         </div>
       )}
+
+      {/* Modal para Compartir Enlace y Contacto de WhatsApp */}
+      <ShareBusinessModal
+        isOpen={mostrarModalCompartir}
+        onClose={() => setMostrarModalCompartir(false)}
+        empresa={empresaActual || {
+          nombre: user?.name,
+          telefono: user?.whatsappNumber,
+          contact_phone: user?.contact_phone,
+        }}
+      />
     </div>
   );
 }

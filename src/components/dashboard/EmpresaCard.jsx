@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Building2, ChevronRight, CalendarOff, Phone, Scissors, CalendarCheck } from "lucide-react";
+import { Building2, ChevronRight, CalendarOff, Phone, Scissors, CalendarCheck, MessageCircle, Share2 } from "lucide-react";
 import BotToggle from "../common/BotToggle";
+import ShareBusinessModal from "../common/ShareBusinessModal";
 import { fechaLarga } from "../../utils/formatters";
 
 export default function EmpresaCard({ empresa, onToggle, onAbrir }) {
+  const [mostrarModalShare, setMostrarModalShare] = useState(false);
   const proximoCierre = empresa.cierres && empresa.cierres.length > 0 ? empresa.cierres[0] : null;
 
   return (
@@ -66,10 +69,23 @@ export default function EmpresaCard({ empresa, onToggle, onAbrir }) {
         </button>
 
         {/* Acciones y Switch del Bot */}
-        <div className="flex items-center justify-between border-t border-slate-100 pt-2.5 sm:border-0 sm:pt-0 sm:justify-end gap-3 shrink-0">
+        <div className="flex items-center justify-between border-t border-slate-100 pt-2.5 sm:border-0 sm:pt-0 sm:justify-end gap-2 sm:gap-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMostrarModalShare(true);
+            }}
+            className="flex h-9 px-2.5 shrink-0 items-center gap-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-900 border border-emerald-200/70 transition-colors text-xs font-bold cursor-pointer"
+            title="Compartir enlace de WhatsApp o escribirle al bot"
+          >
+            <MessageCircle size={15} className="text-emerald-600" />
+            <span className="hidden sm:inline">WhatsApp</span>
+          </button>
+
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-slate-500 sm:hidden md:inline">
-              Bot WhatsApp
+              Bot
             </span>
             <BotToggle
               activo={empresa.activo}
@@ -81,7 +97,7 @@ export default function EmpresaCard({ empresa, onToggle, onAbrir }) {
           <button
             onClick={() => onAbrir(empresa.id)}
             aria-label={`Ver detalles de ${empresa.nombre}`}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-brand-50 hover:text-brand-600 transition-colors active:scale-95"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:bg-brand-50 hover:text-brand-600 transition-colors active:scale-95 cursor-pointer"
           >
             <ChevronRight size={18} />
           </button>
@@ -97,6 +113,12 @@ export default function EmpresaCard({ empresa, onToggle, onAbrir }) {
           </span>
         </div>
       )}
+      {/* Modal para Compartir Enlace y Número de WhatsApp */}
+      <ShareBusinessModal
+        isOpen={mostrarModalShare}
+        onClose={() => setMostrarModalShare(false)}
+        empresa={empresa}
+      />
     </motion.div>
   );
 }

@@ -13,10 +13,12 @@ import {
   CalendarCheck,
   Save,
   RefreshCw,
+  Share2,
 } from "lucide-react";
 import { useBusiness } from "../context/BusinessContext";
 import { useToast } from "../context/ToastContext";
 import BotToggle from "../components/common/BotToggle";
+import ShareBusinessModal from "../components/common/ShareBusinessModal";
 import { money, fechaLarga, DIAS, uid } from "../utils/formatters";
 import { servicesService, settingsService, businessService } from "../services";
 
@@ -38,6 +40,7 @@ export default function BusinessDetailPage() {
   const [tab, setTab] = useState("servicios");
   const [creandoServicio, setCreandoServicio] = useState(false);
   const [editandoServicio, setEditandoServicio] = useState(null);
+  const [mostrarModalShare, setMostrarModalShare] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingServiceId, setDeletingServiceId] = useState(null);
 
@@ -374,26 +377,39 @@ export default function BusinessDetailPage() {
           </div>
         </div>
 
-        {/* Card de activación rápida del Bot */}
-        <div className={`flex items-center justify-between sm:justify-start gap-3 rounded-2xl p-3 sm:p-4 border transition-colors shrink-0 ${
-          empresa.activo ? "bg-emerald-50/70 border-emerald-200/60" : "bg-slate-100/70 border-slate-200"
-        }`}>
-          <div className="flex items-center gap-3">
-            <Power size={18} className={empresa.activo ? "text-emerald-600" : "text-slate-400"} />
-            <div>
-              <p className="text-xs font-semibold text-slate-900">
-                {empresa.activo ? "Bot respondiendo" : "Bot en pausa"}
-              </p>
-              <p className="text-[10px] sm:text-[11px] text-slate-500">
-                {empresa.activo ? "Atiende y agenda citas" : "Sin respuestas"}
-              </p>
+        {/* Acciones principales del encabezado */}
+        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
+          <button
+            type="button"
+            onClick={() => setMostrarModalShare(true)}
+            className="btn-primary text-xs py-2.5 px-3.5 flex items-center gap-1.5 cursor-pointer bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border-emerald-300"
+            title="Compartir enlace de WhatsApp o escribirle al comercio"
+          >
+            <Share2 size={14} />
+            <span>Compartir WhatsApp</span>
+          </button>
+
+          {/* Card de activación rápida del Bot */}
+          <div className={`flex items-center justify-between sm:justify-start gap-3 rounded-2xl p-3 sm:p-4 border transition-colors shrink-0 ${
+            empresa.activo ? "bg-emerald-50/70 border-emerald-200/60" : "bg-slate-100/70 border-slate-200"
+          }`}>
+            <div className="flex items-center gap-3">
+              <Power size={18} className={empresa.activo ? "text-emerald-600" : "text-slate-400"} />
+              <div>
+                <p className="text-xs font-semibold text-slate-900">
+                  {empresa.activo ? "Bot respondiendo" : "Bot en pausa"}
+                </p>
+                <p className="text-[10px] sm:text-[11px] text-slate-500">
+                  {empresa.activo ? "Atiende y agenda citas" : "Sin respuestas"}
+                </p>
+              </div>
             </div>
+            <BotToggle
+              activo={empresa.activo}
+              onChange={handleToggleBot}
+              ariaLabel="Toggle Bot para este negocio"
+            />
           </div>
-          <BotToggle
-            activo={empresa.activo}
-            onChange={handleToggleBot}
-            ariaLabel="Toggle Bot para este negocio"
-          />
         </div>
       </div>
 
@@ -698,6 +714,12 @@ export default function BusinessDetailPage() {
           </div>
         </div>
       )}
+      {/* Modal para Compartir Enlace y Número de WhatsApp */}
+      <ShareBusinessModal
+        isOpen={mostrarModalShare}
+        onClose={() => setMostrarModalShare(false)}
+        empresa={empresa}
+      />
     </div>
   );
 }
