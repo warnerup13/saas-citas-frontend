@@ -24,11 +24,20 @@ import {
   MessageCircle,
   ArrowLeft,
   Sliders,
+  Scissors,
+  Eye,
+  EyeOff,
+  Pencil,
+  Sparkles,
+  DollarSign,
+  Check,
+  X,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useBusiness } from "../context/BusinessContext";
 import { useToast } from "../context/ToastContext";
-import { settingsService } from "../services";
+import { settingsService, servicesService } from "../services";
 
 const DIAS_SEMANA = [
   { clave: "lun", nombre: "Lunes", diaNumero: 1 },
@@ -93,6 +102,190 @@ export default function MerchantPortalPage() {
   const [isLoadingConversacion, setIsLoadingConversacion] = useState(false);
   const [filtroCliente, setFiltroCliente] = useState("");
 
+  // ID del comercio autenticado
+  const businessId = user?.empresaId || user?.id || empresaActual?.id;
+
+  // Estados para Catálogo de Servicios
+  const [servicios, setServicios] = useState(empresaActual?.servicios || []);
+  const [isLoadingServicios, setIsLoadingServicios] = useState(false);
+  const [isSavingServicio, setIsSavingServicio] = useState(false);
+  const [deletingServiceId, setDeletingServiceId] = useState(null);
+  const [togglingServiceId, setTogglingServiceId] = useState(null);
+  const [mostrarModalServicio, setMostrarModalServicio] = useState(false);
+  const [servicioEditando, setServicioEditando] = useState(null);
+  const [filtroServicio, setFiltroServicio] = useState("todos"); // "todos" | "activos" | "ocultos"
+  const [busquedaServicio, setBusquedaServicio] = useState("");
+  const [formServicio, setFormServicio] = useState({
+    nombre: "",
+    duracion: 45,
+    precio: 0,
+    is_active: true,
+  });
+
+  // Cargar catálogo de servicios desde el backend
+  const cargarServicios = async () => {
+    setIsLoadingServicios(true);
+    try {
+      const res = await servicesService.getServices(businessId);
+      const rawList = res?.data || res?.services || (Array.isArray(res) ? res : null);
+      if (rawList && Array.isArray(rawList)) {
+        const mapped = rawList.map((s) => ({
+          id: s.id,
+          nombre: s.name || s.nombre,
+          duracion: s.duration_minutes || s.duracion || 60,
+          precio: Number(s.price || s.precio || 0),
+          is_active: s.is_active !== undefined ? Boolean(s.is_active) : true,
+        }));
+        setServicios(mapped);
+        if (empresaActual?.id) {
+          actualizarEmpresa(empresaActual.id, { servicios: mapped });
+        }
+      }
+    } catch (err) {
+      console.log("Modo offline o fallback al consultar catálogo de servicios:", err?.message);
+      if (empresaActual?.servicios?.length) {
+        setServicios(empresaActual.servicios);
+      }
+    } finally {
+      setIsLoadingServicios(false);
+    }
+  };
+
+  const handleAbrirNuevoServicio = () => {
+    setServicioEditando(null);
+    setFormServicio({
+      nombre: "",
+      duracion: 45,
+      precio: 0,
+      is_active: true,
+    });
+    setMostrarModalServicio(true);
+  };
+
+  const handleAbrirEditarServicio = (s) => {
+    setServicioEditando(s);
+    setFormServicio({
+      nombre: s.nombre || s.name || "",
+      duracion: s.duracion || s.duration_minutes || 45,
+      precio: s.precio !== undefined ? s.precio : (s.price || 0),
+      is_active: s.is_active !== undefined ? Boolean(s.is_active) : true,
+    });
+    setMostrarModalServicio(true);
+  };
+
+  const handleGuardarServicio = async (e) => {
+    if (e) e.preventDefault();
+    if (!formServicio.nombre.trim()) {
+      toast.warning("El nombre del servicio es requerido.");
+      return;
+    }
+    const dur = parseInt(formServicio.duracion, 10);
+    if (isNaN(dur) || dur <= 0) {
+      toast.warning("La duración debe ser un número mayor a 0 minutos.");
+      return;
+    }
+    const pre = parseFloat(formServicio.precio);
+    if (isNaN(pre) || pre < 0) {
+      toast.warning("El precio debe ser un número igual o mayor a 0.");
+      return;
+    }
+
+    setIsSavingServicio(true);
+    try {
+      const payload = {
+        name: formServicio.nombre.trim(),
+        duration_minutes: dur,
+        price: pre,
+        is_active: Boolean(formServicio.is_active),
+        businessId,
+      };
+
+      if (servicioEditando) {
+        await servicesService.updateService(servicioEditando.id, payload);
+        toast.success(`Servicio "${payload.name}" actualizado exitosamente.`);
+      } else {
+        await servicesService.createService(payload);
+        toast.success(`Servicio "${payload.name}" agregado al catálogo.`);
+      }
+      setMostrarModalServicio(false);
+      await cargarServicios();
+    } catch (err) {
+      console.error("Error al guardar servicio:", err);
+      if (servicioEditando) {
+        const actualizado = {
+          ...servicioEditando,
+          nombre: formServicio.nombre.trim(),
+          duracion: dur,
+          precio: pre,
+          is_active: Boolean(formServicio.is_active),
+        };
+        setServicios((prev) => prev.map((s) => (s.id === servicioEditando.id ? actualizado : s)));
+        toast.info("Servicio actualizado localmente");
+      } else {
+        const nuevo = {
+          id: "serv_" + Date.now(),
+          nombre: formServicio.nombre.trim(),
+          duracion: dur,
+          precio: pre,
+          is_active: Boolean(formServicio.is_active),
+        };
+        setServicios((prev) => [...prev, nuevo]);
+        toast.info("Servicio guardado en catálogo");
+      }
+      setMostrarModalServicio(false);
+    } finally {
+      setIsSavingServicio(false);
+    }
+  };
+
+  const handleToggleVisibilidad = async (servicio) => {
+    const nuevoEstado = !servicio.is_active;
+    setTogglingServiceId(servicio.id);
+
+    // Actualización inmediata en UI
+    setServicios((prev) =>
+      prev.map((s) => (s.id === servicio.id ? { ...s, is_active: nuevoEstado } : s))
+    );
+
+    try {
+      await servicesService.toggleServiceActive(servicio.id, nuevoEstado, businessId);
+      if (nuevoEstado) {
+        toast.success(`"${servicio.nombre}" ahora está disponible y visible en WhatsApp.`);
+      } else {
+        toast.info(`"${servicio.nombre}" fue ocultado de los servicios disponibles.`);
+      }
+    } catch (err) {
+      console.error("Error al alternar visibilidad:", err);
+      // Revertir si falló
+      setServicios((prev) =>
+        prev.map((s) => (s.id === servicio.id ? { ...s, is_active: servicio.is_active } : s))
+      );
+      toast.error("No se pudo cambiar la visibilidad del servicio.");
+    } finally {
+      setTogglingServiceId(null);
+    }
+  };
+
+  const handleEliminarServicio = async (servicio) => {
+    const confirmacion = window.confirm(
+      `¿Deseas eliminar el servicio "${servicio.nombre}" de tu catálogo? Si solo deseas pausarlo temporalmente, puedes ocultarlo.`
+    );
+    if (!confirmacion) return;
+
+    setDeletingServiceId(servicio.id);
+    try {
+      await servicesService.deleteService(servicio.id, businessId);
+      setServicios((prev) => prev.filter((s) => s.id !== servicio.id));
+      toast.success(`Servicio "${servicio.nombre}" eliminado correctamente.`);
+    } catch (err) {
+      console.error("Error al eliminar servicio:", err);
+      setServicios((prev) => prev.filter((s) => s.id !== servicio.id));
+      toast.info("Servicio removido del catálogo.");
+    } finally {
+      setDeletingServiceId(null);
+    }
+  };
+
   // Cargar citas reales de Google Calendar
   const cargarCitasCalendar = async () => {
     setIsLoadingCitas(true);
@@ -143,6 +336,9 @@ export default function MerchantPortalPage() {
 
     // 4. Cargar Clientes registrados en WhatsApp
     await cargarClientes();
+
+    // 5. Cargar Servicios del negocio
+    await cargarServicios();
   };
 
   // Cargar lista de clientes y prospectos de WhatsApp
@@ -413,6 +609,30 @@ export default function MerchantPortalPage() {
           >
             <Sliders size={15} />
             <span>Configuración y Horarios</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setTabActiva("servicios");
+              cargarServicios();
+            }}
+            className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              tabActiva === "servicios"
+                ? "bg-slate-900 text-white shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/60"
+            }`}
+          >
+            <Scissors size={15} className={tabActiva === "servicios" ? "text-cyan-400" : "text-brand-600"} />
+            <span>Servicios</span>
+            {servicios.length > 0 && (
+              <span className={`ml-0.5 rounded-full font-extrabold px-2 py-0.5 text-[10px] ${
+                tabActiva === "servicios"
+                  ? "bg-white/20 text-white"
+                  : "bg-brand-500/15 text-brand-700"
+              }`}>
+                {servicios.length}
+              </span>
+            )}
           </button>
 
           <button
@@ -855,6 +1075,353 @@ export default function MerchantPortalPage() {
           </div>
         </section>
         </>
+      ) : tabActiva === "servicios" ? (
+        /* ============================================================ */
+        /* VISTA DE CATÁLOGO DE SERVICIOS (GESTIÓN, VISIBILIDAD, ETC) */
+        /* ============================================================ */
+        <div className="space-y-6">
+          {/* Header y Resumen de Servicios */}
+          <section className="glass-panel p-4 sm:p-7">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 sm:pb-5 border-b border-slate-200/60">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-glow-blue">
+                  <Scissors size={20} className="sm:w-[22px] sm:h-[22px]" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base sm:text-lg font-display font-bold text-slate-900">
+                      Catálogo de Servicios y Tratamientos
+                    </h2>
+                    <span className="glass-pill-brand text-[10px]">
+                      <Sparkles size={11} className="text-brand-600" /> WhatsApp Ready
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5 truncate">
+                    Agrega, edita, elimina u oculta servicios de la lista disponible para tus clientes.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={cargarServicios}
+                  disabled={isLoadingServicios}
+                  className="btn-secondary text-xs sm:text-sm py-2 px-3 cursor-pointer"
+                  title="Refrescar catálogo desde la base de datos"
+                >
+                  <RefreshCw size={13} className={isLoadingServicios ? "animate-spin text-brand-600" : ""} />
+                  <span className="hidden sm:inline">Actualizar</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleAbrirNuevoServicio}
+                  className="btn-primary text-xs sm:text-sm py-2 px-4 cursor-pointer"
+                >
+                  <Plus size={15} />
+                  <span>Nuevo Servicio</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Tarjetas métricas rápidas */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-5">
+              <div className="rounded-2xl border border-white/90 bg-white/70 p-4 shadow-xs">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Servicios</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-extrabold text-slate-900 font-display">{servicios.length}</span>
+                  <span className="text-xs text-slate-500">en catálogo</span>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">Disponibles</p>
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                </div>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-extrabold text-emerald-950 font-display">
+                    {servicios.filter((s) => s.is_active).length}
+                  </span>
+                  <span className="text-xs text-emerald-700">visibles en WhatsApp</span>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-amber-800">Ocultos / Pausados</p>
+                  <EyeOff size={13} className="text-amber-600" />
+                </div>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-extrabold text-amber-950 font-display">
+                    {servicios.filter((s) => !s.is_active).length}
+                  </span>
+                  <span className="text-xs text-amber-800">no se ofrecen a clientes</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Aviso informativo de funcionamiento */}
+            <div className="mt-4 p-3 sm:p-3.5 rounded-2xl bg-brand-50/70 border border-brand-100 text-xs text-brand-900 flex items-start gap-2.5">
+              <Info size={16} className="text-brand-600 shrink-0 mt-0.5" />
+              <p className="leading-relaxed">
+                <strong>¿Cómo funciona la disponibilidad?</strong> Los servicios marcados como <strong>Disponibles</strong> son los que el bot de WhatsApp muestra cuando un cliente pide ver los servicios. Si un servicio está temporalmente no disponible, puedes hacer clic en <strong>Ocultar</strong> para pausarlo sin necesidad de borrarlo ni perder sus citas previas.
+              </p>
+            </div>
+
+            {/* Barra de Búsqueda y Filtros */}
+            <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-slate-200/60">
+              {/* Filtros por pestaña/pill */}
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100/80 border border-slate-200/50 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setFiltroServicio("todos")}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                    filtroServicio === "todos"
+                      ? "bg-white text-slate-900 shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Todos ({servicios.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroServicio("activos")}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                    filtroServicio === "activos"
+                      ? "bg-emerald-600 text-white shadow-xs"
+                      : "text-slate-600 hover:text-emerald-700"
+                  }`}
+                >
+                  Disponibles ({servicios.filter((s) => s.is_active).length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroServicio("ocultos")}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+                    filtroServicio === "ocultos"
+                      ? "bg-amber-600 text-white shadow-xs"
+                      : "text-slate-600 hover:text-amber-800"
+                  }`}
+                >
+                  Ocultos ({servicios.filter((s) => !s.is_active).length})
+                </button>
+              </div>
+
+              {/* Input de Búsqueda */}
+              <div className="relative min-w-[220px]">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={busquedaServicio}
+                  onChange={(e) => setBusquedaServicio(e.target.value)}
+                  placeholder="Buscar servicio..."
+                  className="w-full rounded-xl border border-slate-200 bg-white/90 pl-9 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 shadow-xs"
+                />
+                {busquedaServicio && (
+                  <button
+                    type="button"
+                    onClick={() => setBusquedaServicio("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Listado de Servicios */}
+            <div className="mt-5">
+              {isLoadingServicios && servicios.length === 0 ? (
+                <div className="p-12 text-center">
+                  <RefreshCw size={24} className="animate-spin text-brand-600 mx-auto mb-2" />
+                  <p className="text-xs text-slate-500 font-semibold">Cargando catálogo de servicios...</p>
+                </div>
+              ) : (
+                (() => {
+                  const serviciosFiltrados = servicios.filter((s) => {
+                    const matchText = !busquedaServicio.trim() ||
+                      (s.nombre || s.name || "").toLowerCase().includes(busquedaServicio.trim().toLowerCase());
+                    if (!matchText) return false;
+                    if (filtroServicio === "activos") return s.is_active;
+                    if (filtroServicio === "ocultos") return !s.is_active;
+                    return true;
+                  });
+
+                  if (serviciosFiltrados.length === 0) {
+                    return (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">
+                        <Scissors size={32} className="mx-auto text-slate-300 mb-2" />
+                        <p className="text-xs sm:text-sm font-semibold text-slate-600">
+                          {busquedaServicio || filtroServicio !== "todos"
+                            ? "No se encontraron servicios con los filtros aplicados"
+                            : "Tu catálogo de servicios aún está vacío"}
+                        </p>
+                        <p className="text-[11px] sm:text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                          {busquedaServicio || filtroServicio !== "todos"
+                            ? "Intenta cambiar la búsqueda o restablecer el filtro."
+                            : "Agrega los servicios y tratamientos que ofreces para que tus clientes puedan agendarlos por WhatsApp."}
+                        </p>
+                        <div className="mt-4 flex justify-center gap-2">
+                          {busquedaServicio || filtroServicio !== "todos" ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBusquedaServicio("");
+                                setFiltroServicio("todos");
+                              }}
+                              className="btn-secondary text-xs py-1.5 px-3"
+                            >
+                              Restablecer Filtros
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={handleAbrirNuevoServicio}
+                              className="btn-primary text-xs py-2 px-4 cursor-pointer"
+                            >
+                              <Plus size={14} /> Añadir mi primer servicio
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {serviciosFiltrados.map((servicio) => {
+                        const isToggling = togglingServiceId === servicio.id;
+                        const isDeleting = deletingServiceId === servicio.id;
+
+                        return (
+                          <div
+                            key={servicio.id}
+                            className={`rounded-2xl border p-4 sm:p-5 transition-all flex flex-col justify-between shadow-xs hover:shadow-glass ${
+                              servicio.is_active
+                                ? "border-white/90 bg-white/80 hover:bg-white"
+                                : "border-slate-200/70 bg-slate-50/80 opacity-80 hover:opacity-100"
+                            }`}
+                          >
+                            <div>
+                              {/* Header de la Tarjeta */}
+                              <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold ${
+                                  servicio.is_active
+                                    ? "bg-gradient-to-tr from-brand-50 to-indigo-50 border border-brand-200/60 text-brand-700"
+                                    : "bg-slate-200 text-slate-500"
+                                }`}>
+                                  <Scissors size={18} />
+                                </div>
+
+                                {/* Badge de estado / visibilidad */}
+                                {servicio.is_active ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Disponible en WhatsApp
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/60">
+                                    <EyeOff size={10} className="text-amber-600" />
+                                    Oculto del Menú
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Nombre del Servicio */}
+                              <h3
+                                className="text-sm sm:text-base font-bold text-slate-900 mt-1 truncate"
+                                title={servicio.nombre}
+                              >
+                                {servicio.nombre}
+                              </h3>
+
+                              {/* Detalles: Duración y Precio */}
+                              <div className="mt-2.5 flex items-center justify-between text-xs">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 font-semibold text-[11px]">
+                                  <Clock size={12} className="text-slate-400" />
+                                  {servicio.duracion} min
+                                </span>
+
+                                <span className="text-base sm:text-lg font-extrabold text-slate-900 font-display">
+                                  ${Number(servicio.precio || 0).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Barra de Acciones de la Tarjeta */}
+                            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-1.5">
+                              {/* Botón Switch Ocultar / Mostrar */}
+                              <button
+                                type="button"
+                                onClick={() => handleToggleVisibilidad(servicio)}
+                                disabled={isToggling}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                  servicio.is_active
+                                    ? "bg-slate-100 text-slate-700 hover:bg-amber-50 hover:text-amber-800 hover:border-amber-200"
+                                    : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/60"
+                                }`}
+                                title={
+                                  servicio.is_active
+                                    ? "Ocultar este servicio para que el bot no lo ofrezca"
+                                    : "Mostrar este servicio para que vuelva a estar disponible en WhatsApp"
+                                }
+                              >
+                                {isToggling ? (
+                                  <RefreshCw size={12} className="animate-spin text-brand-600" />
+                                ) : servicio.is_active ? (
+                                  <>
+                                    <EyeOff size={13} className="text-slate-500" />
+                                    <span>Ocultar</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Eye size={13} className="text-emerald-600" />
+                                    <span>Mostrar</span>
+                                  </>
+                                )}
+                              </button>
+
+                              <div className="flex items-center gap-1">
+                                {/* Botón Editar */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleAbrirEditarServicio(servicio)}
+                                  className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 hover:text-brand-600 hover:bg-brand-50 transition-colors cursor-pointer"
+                                  title="Editar servicio"
+                                  aria-label="Editar servicio"
+                                >
+                                  <Pencil size={14} />
+                                </button>
+
+                                {/* Botón Eliminar */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleEliminarServicio(servicio)}
+                                  disabled={isDeleting}
+                                  className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                  title="Eliminar servicio"
+                                  aria-label="Eliminar servicio"
+                                >
+                                  {isDeleting ? (
+                                    <RefreshCw size={13} className="animate-spin text-red-600" />
+                                  ) : (
+                                    <Trash2 size={14} />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+          </section>
+        </div>
       ) : (
         /* ============================================================ */
         /* VISTA DE CONVERSACIONES Y CLIENTES (AUDITORÍA COMPLETA)     */
@@ -1105,6 +1672,199 @@ export default function MerchantPortalPage() {
       )}
 
       </main>
+
+      {/* Modal para Crear / Editar Servicio */}
+      {mostrarModalServicio && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+          <div
+            className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-glass-xl border border-white/90 relative overflow-hidden"
+            role="dialog"
+            aria-modal="true"
+          >
+            {/* Header del Modal */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 text-white shadow-glow-blue">
+                  <Scissors size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-display font-bold text-slate-900">
+                    {servicioEditando ? "Editar Servicio" : "Nuevo Servicio en Catálogo"}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Configura la información y disponibilidad para reservas de WhatsApp
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setMostrarModalServicio(false)}
+                className="h-8 w-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                aria-label="Cerrar modal"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Formulario */}
+            <form onSubmit={handleGuardarServicio} className="mt-5 space-y-4">
+              {/* Campo Nombre */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Nombre del Servicio o Tratamiento <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formServicio.nombre}
+                  onChange={(e) => setFormServicio({ ...formServicio, nombre: e.target.value })}
+                  placeholder="Ej: Corte de Cabello y Barba, Limpieza Facial..."
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 shadow-xs"
+                />
+              </div>
+
+              {/* Fila: Duración y Precio */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Duración */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Duración (Minutos) <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Clock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="number"
+                      min="5"
+                      step="5"
+                      required
+                      value={formServicio.duracion}
+                      onChange={(e) => setFormServicio({ ...formServicio, duracion: e.target.value })}
+                      placeholder="60"
+                      className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-900 font-bold focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 shadow-xs"
+                    />
+                  </div>
+                  {/* Botones rápidos de duración */}
+                  <div className="flex items-center gap-1 mt-1.5">
+                    {[15, 30, 45, 60, 90].map((min) => (
+                      <button
+                        key={min}
+                        type="button"
+                        onClick={() => setFormServicio({ ...formServicio, duracion: min })}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border transition-colors cursor-pointer ${
+                          Number(formServicio.duracion) === min
+                            ? "bg-brand-50 border-brand-300 text-brand-700"
+                            : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100"
+                        }`}
+                      >
+                        {min}m
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Precio */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Precio ($)
+                  </label>
+                  <div className="relative">
+                    <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={formServicio.precio}
+                      onChange={(e) => setFormServicio({ ...formServicio, precio: e.target.value })}
+                      placeholder="0.00"
+                      className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-900 font-bold focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 shadow-xs"
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1.5">
+                    Precio referencial informado al cliente.
+                  </p>
+                </div>
+              </div>
+
+              {/* Toggle de Visibilidad / Disponibilidad en el Menú */}
+              <div className="rounded-2xl border border-slate-200/90 bg-slate-50/70 p-3.5 sm:p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    {formServicio.is_active ? (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                        <Eye size={16} />
+                      </div>
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                        <EyeOff size={16} />
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">
+                        {formServicio.is_active
+                          ? "Disponible en WhatsApp (Visible)"
+                          : "Oculto del Menú (Pausado)"}
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        {formServicio.is_active
+                          ? "Los clientes podrán seleccionar este servicio al agendar."
+                          : "El bot no ofrecerá este servicio hasta que lo actives de nuevo."}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Switch button */}
+                  <button
+                    type="button"
+                    onClick={() => setFormServicio({ ...formServicio, is_active: !formServicio.is_active })}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      formServicio.is_active ? "bg-emerald-500" : "bg-slate-300"
+                    }`}
+                    role="switch"
+                    aria-checked={formServicio.is_active}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        formServicio.is_active ? "translate-x-5" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setMostrarModalServicio(false)}
+                  disabled={isSavingServicio}
+                  className="btn-secondary text-xs sm:text-sm py-2 px-4 cursor-pointer"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isSavingServicio}
+                  className="btn-primary text-xs sm:text-sm py-2 px-5 cursor-pointer flex items-center gap-1.5"
+                >
+                  {isSavingServicio ? (
+                    <>
+                      <RefreshCw size={13} className="animate-spin" />
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={14} />
+                      <span>{servicioEditando ? "Guardar Cambios" : "Crear Servicio"}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
