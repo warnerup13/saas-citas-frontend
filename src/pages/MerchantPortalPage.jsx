@@ -291,9 +291,10 @@ export default function MerchantPortalPage() {
               onClick={handleLogout}
               className="btn-danger text-xs py-1.5 sm:py-2 px-2.5 sm:px-3.5"
               aria-label="Cerrar sesión"
+              title="Cerrar sesión"
             >
-              <LogOut size={13} />
-              <span className="hidden sm:inline">Salir</span>
+              <LogOut size={14} />
+              <span className="hidden sm:inline">Cerrar Sesión</span>
             </button>
           </div>
         </div>

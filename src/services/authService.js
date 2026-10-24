@@ -1,8 +1,9 @@
 import apiClient from "./apiClient";
 import { API_CONFIG } from "../config/apiConfig";
+import { isTokenExpired, parseJwt, getTokenRemainingMs } from "../utils/tokenUtils";
 
 /**
- * Servicio de Autenticación
+ * Servicio de Autenticación con ciclo de vida seguro de sesión
  */
 export const authService = {
   /**
@@ -69,12 +70,17 @@ export const authService = {
   },
 
   /**
-   * Cierra sesión y elimina tokens locales
+   * Cierra sesión y elimina tokens y datos del almacenamiento local
    */
   logout() {
-    localStorage.removeItem(API_CONFIG.storageKeys.token);
-    localStorage.removeItem(API_CONFIG.storageKeys.auth);
-    localStorage.removeItem(API_CONFIG.storageKeys.user);
+    try {
+      localStorage.removeItem(API_CONFIG.storageKeys.token);
+      localStorage.removeItem(API_CONFIG.storageKeys.auth);
+      localStorage.removeItem(API_CONFIG.storageKeys.user);
+      sessionStorage.clear();
+    } catch (e) {
+      console.warn("[authService] Error al limpiar almacenamiento:", e);
+    }
   },
 
   /**
@@ -85,11 +91,79 @@ export const authService = {
   },
 
   /**
-   * Verifica si hay token guardado
+   * Retorna el usuario almacenado siempre y cuando el token siga vigente
+   */
+  getStoredUser() {
+    const token = this.getToken();
+    if (!token || isTokenExpired(token)) {
+      this.logout();
+      return null;
+    }
+
+    const saved = localStorage.getItem(API_CONFIG.storageKeys.user);
+    if (!saved) return null;
+
+    try {
+      return JSON.parse(saved);
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Verifica si hay una sesión activa y con token no expirado
    */
   isAuthenticated() {
-    return !!localStorage.getItem(API_CONFIG.storageKeys.token);
+    const token = this.getToken();
+    if (!token) return false;
+
+    if (isTokenExpired(token)) {
+      this.logout();
+      return false;
+    }
+
+    return true;
+  },
+
+  /**
+   * Retorna los milisegundos restantes antes de que expire la sesión actual
+   */
+  getRemainingSessionMs() {
+    const token = this.getToken();
+    return getTokenRemainingMs(token);
+  },
+
+  /**
+   * Obtiene los datos decodificados directamente del token JWT
+   */
+  getTokenData() {
+    const token = this.getToken();
+    return parseJwt(token);
+  },
+
+  /**
+   * Opcional: valida la vigencia del token contra el backend si hay conectividad
+   */
+  async verifySessionWithBackend() {
+    const token = this.getToken();
+    if (!token || isTokenExpired(token)) {
+      this.logout();
+      return { valid: false, reason: "expired_locally" };
+    }
+
+    try {
+      const response = await apiClient.get("/auth/me");
+      return { valid: true, data: response.data };
+    } catch (error) {
+      if (error?.status === 401 || error?.isAuthError) {
+        this.logout();
+        return { valid: false, reason: "expired_server" };
+      }
+      // Si fue error de red, asumimos válido si el token local aún no ha expirado
+      return { valid: !isTokenExpired(token), reason: "network_offline" };
+    }
   },
 };
 
 export default authService;
+

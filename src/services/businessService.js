@@ -102,9 +102,11 @@ export const businessService = {
       name: businessData.name?.trim() || businessData.nombre?.trim(),
       email: businessData.email?.trim(),
       password: businessData.password,
-      whatsapp_number: businessData.whatsapp_number || businessData.whatsappNumber || businessData.telefono,
+      whatsapp_number: (businessData.whatsapp_number || businessData.telefonoBot || businessData.whatsappNumber || businessData.telefono || "").trim(),
+      contact_phone: (businessData.contact_phone || businessData.telefonoContacto || businessData.telefonoPersonal || "").trim() || null,
       timezone: businessData.timezone || "America/Caracas",
       calendar_email: businessData.calendar_email || businessData.googleCalendarEmail || "",
+      greeting_message: businessData.greeting_message || businessData.greetingMessage || "",
     };
 
     const response = await apiClient.post("/business", payload);
@@ -118,7 +120,26 @@ export const businessService = {
    * @returns {Promise<{ success: boolean, message: string, data: Object }>}
    */
   async updateBusiness(id, updateData) {
-    const response = await apiClient.put(`/business/${id}`, updateData);
+    const payload = {
+      ...(updateData.nombre !== undefined && { name: updateData.nombre.trim() }),
+      ...(updateData.name !== undefined && { name: updateData.name.trim() }),
+      ...(updateData.email !== undefined && { email: updateData.email.trim() }),
+      ...(updateData.telefonoBot !== undefined && { whatsapp_number: updateData.telefonoBot.trim() }),
+      ...(updateData.whatsapp_number !== undefined && { whatsapp_number: updateData.whatsapp_number.trim() }),
+      ...(updateData.telefonoContacto !== undefined && { contact_phone: updateData.telefonoContacto.trim() }),
+      ...(updateData.telefonoPersonal !== undefined && { contact_phone: updateData.telefonoPersonal.trim() }),
+      ...(updateData.contact_phone !== undefined && { contact_phone: updateData.contact_phone.trim() }),
+      ...(updateData.googleCalendarEmail !== undefined && { google_calendar_id: updateData.googleCalendarEmail.trim() }),
+      ...(updateData.google_calendar_id !== undefined && { google_calendar_id: updateData.google_calendar_id.trim() }),
+      ...(updateData.timezone !== undefined && { timezone: updateData.timezone }),
+      ...(updateData.greeting_message !== undefined && { greeting_message: updateData.greeting_message }),
+      ...(updateData.greetingMessage !== undefined && { greeting_message: updateData.greetingMessage }),
+      ...(updateData.activo !== undefined && { is_bot_active: Boolean(updateData.activo) }),
+      ...(updateData.is_bot_active !== undefined && { is_bot_active: Boolean(updateData.is_bot_active) }),
+      ...(updateData.password && { password: updateData.password }),
+    };
+
+    const response = await apiClient.put(`/business/${id}`, payload);
     return response.data;
   },
 

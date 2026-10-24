@@ -11,10 +11,12 @@ import {
 } from "lucide-react";
 import { useBusiness } from "../../context/BusinessContext";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 
 export default function Sidebar({ isMobileOpen, setIsMobileOpen }) {
   const { stats } = useBusiness();
   const { logout } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   const navItems = [
@@ -174,11 +176,12 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen }) {
             onClick={() => {
               setIsMobileOpen(false);
               logout();
-              navigate("/login");
+              toast.info("Has cerrado sesión exitosamente.");
+              navigate("/login", { replace: true });
             }}
-            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold text-red-600 bg-red-50/70 hover:bg-red-100 border border-red-200/60 transition-colors shadow-xs active:scale-95"
           >
-            <LogOut size={14} className="shrink-0" /> Cerrar Sesión
+            <LogOut size={15} className="shrink-0" /> Cerrar Sesión
           </button>
         </div>
       </aside>

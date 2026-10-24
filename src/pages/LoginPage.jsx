@@ -8,30 +8,34 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  Sparkles,
   ShieldCheck,
   SlidersHorizontal,
   Store,
   Zap,
+  AlertCircle,
+  X,
+  KeyRound,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { useBusiness } from "../context/BusinessContext";
 import { useToast } from "../context/ToastContext";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, loginWithBackend, loginAsComercio, loginAsAdmin } = useAuth();
-  const { empresas } = useBusiness();
+  const {
+    user,
+    isAuthenticated,
+    loginWithBackend,
+    sessionExpiredNotice,
+    clearSessionExpiredNotice,
+  } = useAuth();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState("comercio"); // 'comercio' | 'admin'
-  const [selectedEmpresaId, setSelectedEmpresaId] = useState(1);
-  const [email, setEmail] = useState("admin@negocio.com");
-  const [password, setPassword] = useState("password123");
+  // Campos limpios por defecto para garantizar la seguridad en dispositivos móviles y compartidos
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
-
 
   // Si el usuario ya está autenticado, redirigir automáticamente a su panel correspondiente
   useEffect(() => {
@@ -47,20 +51,30 @@ export default function LoginPage() {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    if (tab === "comercio") {
+    // No forzamos credenciales demo para no dejarlas abiertas en móviles
+  };
+
+  /**
+   * Helper opcional para desarrolladores o pruebas: carga credenciales con 1 clic sin dejarlas abiertas
+   */
+  const handleFillDemo = () => {
+    if (activeTab === "comercio") {
       setEmail("admin@negocio.com");
       setPassword("password123");
     } else {
       setEmail("admin@saas.com");
-      
       setPassword("admin123");
     }
-
-    
+    toast.info("Credenciales demo cargadas en los campos.");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!email.trim() || !password) {
+      toast.warning("Por favor ingresa tu correo y contraseña.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -68,7 +82,9 @@ export default function LoginPage() {
       const isRoleAdmin = response.role === "admin" || activeTab === "admin";
 
       toast.success(response.message || "Inicio de sesión exitoso.", {
-        titulo: isRoleAdmin ? `¡Bienvenido Administrador!` : `¡Bienvenido ${response.user?.name || ""}!`,
+        titulo: isRoleAdmin
+          ? "¡Bienvenido Administrador!"
+          : `¡Bienvenido ${response.user?.name || ""}!`,
       });
       setIsLoading(false);
 
@@ -87,33 +103,15 @@ export default function LoginPage() {
           }
         );
       } else {
-        toast.error(error?.message || "No se pudo conectar con el servidor. Intenta de nuevo más tarde.", {
-          titulo: "Fallo de Autenticación",
-        });
+        toast.error(
+          error?.message || "No se pudo conectar con el servidor. Intenta de nuevo más tarde.",
+          {
+            titulo: "Fallo de Autenticación",
+          }
+        );
       }
     }
   };
-
-  const handleQuickComercio = (empresa) => {
-    setIsLoading(true);
-    setTimeout(() => {
-      loginAsComercio(empresa.id, empresa.nombre, `${empresa.nombre.toLowerCase().replace(/\s+/g, '')}@negocio.com`);
-      toast.info(`Accediendo en modo demo como ${empresa.nombre}`);
-      setIsLoading(false);
-      navigate("/comercio");
-    }, 300);
-  };
-
-  const handleQuickAdmin = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      loginAsAdmin();
-      toast.info("Accediendo en modo Administrador Demo");
-      setIsLoading(false);
-      navigate("/dashboard");
-    }, 300);
-  };
-
 
   return (
     <div className="relative min-h-screen flex items-center justify-center px-3.5 sm:px-4 py-8 sm:py-12 selection:bg-brand-500 selection:text-white overflow-x-hidden">
@@ -133,144 +131,184 @@ export default function LoginPage() {
             </div>
             <span className="font-display text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
               mycitas
-              
-              {/* <span className="text-cyan-500 font-normal">.glass</span> */}
             </span>
           </Link>
           <h1 className="mt-2.5 sm:mt-3 text-xl sm:text-2xl font-bold font-display text-slate-900 tracking-tight">
             Acceso a la Plataforma
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-slate-500">
-            Elige tu perfil de acceso para ingresar a tu entorno
+            Ingresa con tu correo y contraseña para acceder a tu entorno seguro
           </p>
         </div>
 
-        {/* Selector de Rol: Comercio vs Super Admin */}
-        <div className="mb-3.5 sm:mb-4 grid grid-cols-2 gap-1.5 sm:gap-2 rounded-2xl bg-white/70 backdrop-blur-xl p-1.5 border border-white/90 shadow-glass">
+        {/* Notificación de sesión expirada */}
+        {sessionExpiredNotice && (
+          <div className="mb-3.5 sm:mb-4 rounded-2xl bg-amber-50/90 border border-amber-200/90 p-3 sm:p-3.5 text-xs text-amber-900 flex items-start justify-between gap-2 shadow-xs backdrop-blur-md">
+            <div className="flex items-start gap-2 min-w-0">
+              <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+              <span className="font-medium">{sessionExpiredNotice}</span>
+            </div>
             <button
               type="button"
-              onClick={() => handleTabChange("comercio")}
-              className={`flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl py-2 sm:py-2.5 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                activeTab === "comercio"
-                  ? "bg-gradient-to-r from-brand-600 to-cyan-500 text-white shadow-glow-blue"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
+              onClick={clearSessionExpiredNotice}
+              className="text-amber-500 hover:text-amber-700 p-0.5 shrink-0"
+              aria-label="Cerrar notificación"
             >
-              <Store size={15} />
-              <span>Soy un Comercio</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleTabChange("admin")}
-              className={`flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl py-2 sm:py-2.5 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                activeTab === "admin"
-                  ? "bg-slate-900 text-white shadow-md"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              <SlidersHorizontal size={15} />
-              <span>Administrador</span>
+              <X size={14} />
             </button>
           </div>
+        )}
 
-          {/* Tarjeta Principal Nova Glass */}
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-            className="glass-panel p-4 sm:p-8"
+        {/* Selector de Rol: Comercio vs Super Admin */}
+        <div className="mb-3.5 sm:mb-4 grid grid-cols-2 gap-1.5 sm:gap-2 rounded-2xl bg-white/70 backdrop-blur-xl p-1.5 border border-white/90 shadow-glass">
+          <button
+            type="button"
+            onClick={() => handleTabChange("comercio")}
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl py-2 sm:py-2.5 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeTab === "comercio"
+                ? "bg-gradient-to-r from-brand-600 to-cyan-500 text-white shadow-glow-blue"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
           >
-            {activeTab === "comercio" ? (
-              <div className="mb-4 sm:mb-5 rounded-2xl bg-gradient-to-r from-blue-50/90 to-cyan-50/90 border border-blue-200/70 p-3 sm:p-4 text-xs text-blue-900 flex items-start gap-2.5 sm:gap-3 shadow-xs">
-                <Zap size={16} className="text-brand-600 shrink-0 mt-0.5" />
-                <div className="leading-relaxed text-[11px] sm:text-xs">
-                  <strong className="font-bold block">Portal del Comercio:</strong>
-                  <span>Interfaz dedicada para encender/apagar tu bot de WhatsApp por días u horarios y ver tu Google Calendar sincronizado.</span>
-                </div>
-              </div>
-            ) : (
-              <div className="mb-4 sm:mb-5 rounded-2xl bg-slate-100/90 border border-slate-200/80 p-3 sm:p-4 text-xs text-slate-800 flex items-start gap-2.5 sm:gap-3 shadow-xs">
-                <ShieldCheck size={16} className="text-slate-700 shrink-0 mt-0.5" />
-                <div className="leading-relaxed text-[11px] sm:text-xs">
-                  <strong className="font-bold block">Panel de Administradores:</strong>
-                  <span>Gestión de todos los comercios registrados, servicios, métricas generales y sincronización con Google Calendar.</span>
-                </div>
-              </div>
-            )}
+            <Store size={15} />
+            <span>Soy un Comercio</span>
+          </button>
 
-            <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
-             
+          <button
+            type="button"
+            onClick={() => handleTabChange("admin")}
+            className={`flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl py-2 sm:py-2.5 text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeTab === "admin"
+                ? "bg-slate-900 text-white shadow-md"
+                : "text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            <SlidersHorizontal size={15} />
+            <span>Administrador</span>
+          </button>
+        </div>
 
-              <div>
-                <label className="label-base">
-                  <span>Correo Electrónico</span>
-                </label>
-                <div className="relative">
-                  <Mail
-                    size={15}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                  />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="input-base pl-9 sm:pl-10"
-                    required
-                  />
-                </div>
+        {/* Tarjeta Principal Nova Glass */}
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+          className="glass-panel p-4 sm:p-8"
+        >
+          {activeTab === "comercio" ? (
+            <div className="mb-4 sm:mb-5 rounded-2xl bg-gradient-to-r from-blue-50/90 to-cyan-50/90 border border-blue-200/70 p-3 sm:p-4 text-xs text-blue-900 flex items-start gap-2.5 sm:gap-3 shadow-xs">
+              <Zap size={16} className="text-brand-600 shrink-0 mt-0.5" />
+              <div className="leading-relaxed text-[11px] sm:text-xs">
+                <strong className="font-bold block">Portal del Comercio:</strong>
+                <span>
+                  Interfaz dedicada para encender/apagar tu bot de WhatsApp por días u horarios y
+                  ver tu Google Calendar sincronizado.
+                </span>
               </div>
-
-              <div>
-                <label className="label-base">
-                  <span>Contraseña</span>
-                </label>
-                <div className="relative">
-                  <Lock
-                    size={15}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                  />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="input-base pl-9 sm:pl-10 pr-10"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
-                  >
-                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
+            </div>
+          ) : (
+            <div className="mb-4 sm:mb-5 rounded-2xl bg-slate-100/90 border border-slate-200/80 p-3 sm:p-4 text-xs text-slate-800 flex items-start gap-2.5 sm:gap-3 shadow-xs">
+              <ShieldCheck size={16} className="text-slate-700 shrink-0 mt-0.5" />
+              <div className="leading-relaxed text-[11px] sm:text-xs">
+                <strong className="font-bold block">Panel de Administradores:</strong>
+                <span>
+                  Gestión de todos los comercios registrados, servicios, métricas generales y
+                  sincronización con Google Calendar.
+                </span>
               </div>
+            </div>
+          )}
 
+          <form onSubmit={handleSubmit} className="space-y-3.5 sm:space-y-4">
+            <div>
+              <label className="label-base" htmlFor="email-input">
+                <span>Correo Electrónico</span>
+              </label>
+              <div className="relative">
+                <Mail
+                  size={15}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+                <input
+                  id="email-input"
+                  type="email"
+                  autoComplete="email"
+                  placeholder={
+                    activeTab === "comercio" ? "ej. admin@negocio.com" : "ej. admin@saas.com"
+                  }
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input-base pl-9 sm:pl-10"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="label-base" htmlFor="password-input">
+                <span>Contraseña</span>
+              </label>
+              <div className="relative">
+                <Lock
+                  size={15}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+                />
+                <input
+                  id="password-input"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input-base pl-9 sm:pl-10 pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                >
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Botón opcional para rellenar demo */}
+            <div className="flex justify-end">
               <button
-                type="submit"
-                disabled={isLoading}
-                className="btn-primary w-full py-2.5 sm:py-3 text-xs sm:text-sm font-bold mt-2"
+                type="button"
+                onClick={handleFillDemo}
+                className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs text-brand-600 hover:text-brand-700 font-medium py-1 px-2 rounded-lg hover:bg-brand-50 transition-colors"
               >
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                    <span>Accediendo...</span>
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-center gap-2">
-                    <span>{activeTab === "comercio" ? "Ingresar a mi Negocio" : "Ingresar como Administrador"}</span>
-                    <ArrowRight size={15} />
-                  </span>
-                )}
+                <KeyRound size={12} />
+                <span>Usar credenciales de prueba ({activeTab === "comercio" ? "Comercio" : "Admin"})</span>
               </button>
-            </form>
+            </div>
 
-            
-
-        
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="btn-primary w-full py-2.5 sm:py-3 text-xs sm:text-sm font-bold mt-2"
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-4 w-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  <span>Accediendo...</span>
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  <span>
+                    {activeTab === "comercio"
+                      ? "Ingresar a mi Negocio"
+                      : "Ingresar como Administrador"}
+                  </span>
+                  <ArrowRight size={15} />
+                </span>
+              )}
+            </button>
+          </form>
 
           {/* Enlaces de pie */}
           <div className="mt-5 sm:mt-6 pt-3.5 sm:pt-4 border-t border-slate-200/60 flex items-center justify-between text-[11px] sm:text-xs font-semibold text-slate-500">

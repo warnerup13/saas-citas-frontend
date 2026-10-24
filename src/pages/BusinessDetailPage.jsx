@@ -13,10 +13,16 @@ import {
   CalendarCheck,
   Save,
   RefreshCw,
+  Bot,
+  Mail,
+  Building2,
+  Globe,
+  MessageSquare,
 } from "lucide-react";
 import { useBusiness } from "../context/BusinessContext";
 import { useToast } from "../context/ToastContext";
 import BotToggle from "../components/common/BotToggle";
+import Modal from "../components/common/Modal";
 import { money, fechaLarga, DIAS, uid } from "../utils/formatters";
 import { servicesService, settingsService, businessService } from "../services";
 
@@ -40,6 +46,20 @@ export default function BusinessDetailPage() {
   const [editandoServicio, setEditandoServicio] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingServiceId, setDeletingServiceId] = useState(null);
+
+  // Estado para la edición de la información general del comercio
+  const [isEditBusinessModalOpen, setIsEditBusinessModalOpen] = useState(false);
+  const [isSavingBusiness, setIsSavingBusiness] = useState(false);
+  const [formComercio, setFormComercio] = useState({
+    nombre: "",
+    rubro: "Peluquería",
+    telefonoBot: "",
+    telefonoContacto: "",
+    email: "",
+    googleCalendarEmail: "",
+    timezone: "America/Caracas",
+    greetingMessage: "",
+  });
 
   // Form state para nuevos servicios
   const [formServicio, setFormServicio] = useState({
@@ -125,6 +145,42 @@ export default function BusinessDetailPage() {
       </div>
     );
   }
+
+  const handleAbrirEditarComercio = () => {
+    setFormComercio({
+      nombre: empresa.nombre || "",
+      rubro: empresa.rubro || "Peluquería",
+      telefonoBot: empresa.telefonoBot || empresa.telefono || "",
+      telefonoContacto: empresa.telefonoContacto || "",
+      email: empresa.email || "",
+      googleCalendarEmail: empresa.googleCalendarEmail || "",
+      timezone: empresa.timezone || "America/Caracas",
+      greetingMessage: empresa.greetingMessage || "",
+    });
+    setIsEditBusinessModalOpen(true);
+  };
+
+  const handleGuardarComercio = async (e) => {
+    e.preventDefault();
+    if (!formComercio.nombre?.trim()) {
+      toast.warning("El nombre del comercio es obligatorio.");
+      return;
+    }
+    if (!formComercio.telefonoBot?.trim()) {
+      toast.warning("El teléfono del bot de WhatsApp es obligatorio.");
+      return;
+    }
+
+    setIsSavingBusiness(true);
+    try {
+      const res = await actualizarEmpresa(empresa.id, formComercio, false);
+      if (res?.success) {
+        setIsEditBusinessModalOpen(false);
+      }
+    } finally {
+      setIsSavingBusiness(false);
+    }
+  };
 
   const handleToggleBot = async (val) => {
     actualizarEmpresa(empresa.id, { activo: val });
@@ -356,10 +412,30 @@ export default function BusinessDetailPage() {
             </span>
           </div>
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1.5 text-xs text-slate-500">
-            <span className="flex items-center gap-1.5 font-medium"><Scissors size={13} /> {empresa.rubro}</span>
-            <span className="flex items-center gap-1.5 font-medium"><Phone size={13} /> {empresa.telefono}</span>
-            <span className="flex items-center gap-1 text-cyan-700 bg-cyan-50/80 px-2 py-0.5 rounded-lg border border-cyan-200/60 font-semibold text-[11px] truncate max-w-full">
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-2 text-xs text-slate-500">
+            <span className="flex items-center gap-1.5 font-medium">
+              <Scissors size={13} className="text-slate-400" /> {empresa.rubro}
+            </span>
+            <span className="flex items-center gap-1.5 font-semibold text-emerald-700 bg-emerald-50/80 px-2.5 py-1 rounded-xl border border-emerald-200/60 text-[11px] sm:text-xs">
+              <Bot size={13} className="text-emerald-600 shrink-0" />
+              <span>Bot WhatsApp: {empresa.telefonoBot || empresa.telefono}</span>
+            </span>
+            {empresa.telefonoContacto ? (
+              <span className="flex items-center gap-1.5 font-semibold text-blue-700 bg-blue-50/80 px-2.5 py-1 rounded-xl border border-blue-200/60 text-[11px] sm:text-xs">
+                <Phone size={12} className="text-blue-600 shrink-0" />
+                <span>Contacto Personal: {empresa.telefonoContacto}</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-slate-400 italic text-[11px]">
+                <Phone size={12} className="shrink-0" /> Sin teléfono personal
+              </span>
+            )}
+            {empresa.email && (
+              <span className="flex items-center gap-1.5 font-medium text-slate-600">
+                <Mail size={12} className="text-slate-400" /> {empresa.email}
+              </span>
+            )}
+            <span className="flex items-center gap-1 text-cyan-700 bg-cyan-50/80 px-2.5 py-1 rounded-xl border border-cyan-200/60 font-semibold text-[11px] truncate max-w-full">
               <CalendarCheck size={12} className="text-cyan-600 shrink-0" />
               Calendar: {empresa.googleCalendarEmail || "Sin vincular"}
             </span>
@@ -369,26 +445,37 @@ export default function BusinessDetailPage() {
           </div>
         </div>
 
-        {/* Card de activación rápida del Bot */}
-        <div className={`flex items-center justify-between sm:justify-start gap-3 rounded-2xl p-3 sm:p-4 border transition-colors shrink-0 ${
-          empresa.activo ? "bg-emerald-50/70 border-emerald-200/60" : "bg-slate-100/70 border-slate-200"
-        }`}>
-          <div className="flex items-center gap-3">
-            <Power size={18} className={empresa.activo ? "text-emerald-600" : "text-slate-400"} />
-            <div>
-              <p className="text-xs font-semibold text-slate-900">
-                {empresa.activo ? "Bot respondiendo" : "Bot en pausa"}
-              </p>
-              <p className="text-[10px] sm:text-[11px] text-slate-500">
-                {empresa.activo ? "Atiende y agenda citas" : "Sin respuestas"}
-              </p>
+        {/* Acciones del Comercio: Editar Información y Switch del Bot */}
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0">
+          <button
+            onClick={handleAbrirEditarComercio}
+            className="flex items-center gap-1.5 rounded-2xl border border-brand-200 bg-brand-50/70 hover:bg-brand-100 text-brand-700 font-bold px-3 sm:px-4 py-2 sm:py-2.5 text-xs shadow-xs active:scale-95 transition-all cursor-pointer"
+          >
+            <Pencil size={14} className="text-brand-600" />
+            <span>Editar Información</span>
+          </button>
+
+          {/* Card de activación rápida del Bot */}
+          <div className={`flex items-center justify-between sm:justify-start gap-3 rounded-2xl p-2.5 sm:p-3 border transition-colors shrink-0 ${
+            empresa.activo ? "bg-emerald-50/70 border-emerald-200/60" : "bg-slate-100/70 border-slate-200"
+          }`}>
+            <div className="flex items-center gap-2.5">
+              <Power size={17} className={empresa.activo ? "text-emerald-600" : "text-slate-400"} />
+              <div>
+                <p className="text-xs font-semibold text-slate-900 leading-tight">
+                  {empresa.activo ? "Bot activo" : "En pausa"}
+                </p>
+                <p className="text-[10px] text-slate-500 leading-tight">
+                  {empresa.activo ? "Agenda citas" : "Sin respuestas"}
+                </p>
+              </div>
             </div>
+            <BotToggle
+              activo={empresa.activo}
+              onChange={handleToggleBot}
+              ariaLabel="Toggle Bot para este negocio"
+            />
           </div>
-          <BotToggle
-            activo={empresa.activo}
-            onChange={handleToggleBot}
-            ariaLabel="Toggle Bot para este negocio"
-          />
         </div>
       </div>
 
@@ -677,6 +764,212 @@ export default function BusinessDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Modal para Modificar Información del Comercio */}
+      <Modal
+        isOpen={isEditBusinessModalOpen}
+        onClose={() => setIsEditBusinessModalOpen(false)}
+        title="Modificar Información del Comercio"
+      >
+        <form onSubmit={handleGuardarComercio} className="space-y-4">
+          <div>
+            <label className="label-base" htmlFor="edit-nombre">
+              <span>Nombre del Comercio</span>
+            </label>
+            <div className="relative">
+              <Building2 size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                id="edit-nombre"
+                type="text"
+                required
+                value={formComercio.nombre}
+                onChange={(e) => setFormComercio({ ...formComercio, nombre: e.target.value })}
+                placeholder="Nombre del negocio"
+                className="input-base pl-9 sm:pl-10"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div>
+              <label className="label-base" htmlFor="edit-rubro">
+                <span>Rubro / Categoría</span>
+              </label>
+              <select
+                id="edit-rubro"
+                value={formComercio.rubro}
+                onChange={(e) => setFormComercio({ ...formComercio, rubro: e.target.value })}
+                className="input-base"
+              >
+                <option value="Peluquería">Peluquería</option>
+                <option value="Barbería">Barbería</option>
+                <option value="Spas & Uñas">Spas & Uñas</option>
+                <option value="Consultorio Medico">Consultorio Médico</option>
+                <option value="Estética & Spa">Estética & Spa</option>
+                <option value="Servicios Generales">Servicios Generales</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="label-base" htmlFor="edit-email">
+                <span>Correo del Comercio</span>
+              </label>
+              <div className="relative">
+                <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  id="edit-email"
+                  type="email"
+                  value={formComercio.email}
+                  onChange={(e) => setFormComercio({ ...formComercio, email: e.target.value })}
+                  placeholder="comercio@ejemplo.com"
+                  className="input-base pl-9 sm:pl-10"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Sección de Teléfonos: Bot de WhatsApp y Contacto Personal */}
+          <div className="rounded-2xl bg-slate-50/80 p-3 sm:p-4 border border-slate-200/70 space-y-3.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+              <Phone size={14} className="text-brand-600" />
+              <span>Números de Teléfono del Comercio</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              {/* 1. Teléfono Bot */}
+              <div>
+                <label className="label-base flex items-center justify-between" htmlFor="edit-telefono-bot">
+                  <span>Teléfono Bot (WhatsApp)</span>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Requerido</span>
+                </label>
+                <div className="relative">
+                  <Bot size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <input
+                    id="edit-telefono-bot"
+                    type="text"
+                    required
+                    value={formComercio.telefonoBot}
+                    onChange={(e) => setFormComercio({ ...formComercio, telefonoBot: e.target.value })}
+                    placeholder="ej: 584121234567"
+                    className="input-base pl-9 sm:pl-10"
+                  />
+                </div>
+                <p className="mt-1 text-[10px] text-slate-500">
+                  Número por el cual los clientes conversan y reservan con el Bot.
+                </p>
+              </div>
+
+              {/* 2. Teléfono Personal / Contacto */}
+              <div>
+                <label className="label-base flex items-center justify-between" htmlFor="edit-telefono-contacto">
+                  <span>Teléfono Contacto / Personal</span>
+                  <span className="text-[10px] text-slate-400 font-medium">Personal</span>
+                </label>
+                <div className="relative">
+                  <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <input
+                    id="edit-telefono-contacto"
+                    type="text"
+                    value={formComercio.telefonoContacto}
+                    onChange={(e) => setFormComercio({ ...formComercio, telefonoContacto: e.target.value })}
+                    placeholder="ej: 584149876543"
+                    className="input-base pl-9 sm:pl-10"
+                  />
+                </div>
+                <p className="mt-1 text-[10px] text-slate-500">
+                  Número privado del encargado para contacto directo con la plataforma.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div>
+              <label className="label-base" htmlFor="edit-calendar">
+                <span>Google Calendar ID / Email</span>
+              </label>
+              <div className="relative">
+                <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  id="edit-calendar"
+                  type="email"
+                  value={formComercio.googleCalendarEmail}
+                  onChange={(e) => setFormComercio({ ...formComercio, googleCalendarEmail: e.target.value })}
+                  placeholder="agenda.negocio@gmail.com"
+                  className="input-base pl-9 sm:pl-10"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="label-base" htmlFor="edit-timezone">
+                <span>Zona Horaria</span>
+              </label>
+              <div className="relative">
+                <Globe size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <select
+                  id="edit-timezone"
+                  value={formComercio.timezone}
+                  onChange={(e) => setFormComercio({ ...formComercio, timezone: e.target.value })}
+                  className="input-base pl-9 sm:pl-10"
+                >
+                  <option value="America/Caracas">America/Caracas (UTC-4)</option>
+                  <option value="America/Bogota">America/Bogota (UTC-5)</option>
+                  <option value="America/Mexico_City">America/Mexico_City (UTC-6)</option>
+                  <option value="America/Lima">America/Lima (UTC-5)</option>
+                  <option value="America/Santiago">America/Santiago (UTC-4)</option>
+                  <option value="America/Argentina/Buenos_Aires">America/Buenos_Aires (UTC-3)</option>
+                  <option value="Europe/Madrid">Europe/Madrid (UTC+1)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="label-base" htmlFor="edit-greeting">
+              <span>Mensaje de Bienvenida del Bot</span>
+            </label>
+            <div className="relative">
+              <textarea
+                id="edit-greeting"
+                rows={2}
+                value={formComercio.greetingMessage}
+                onChange={(e) => setFormComercio({ ...formComercio, greetingMessage: e.target.value })}
+                placeholder="¡Hola! Bienvenido a nuestro servicio de reservas. ¿En qué podemos ayudarte hoy?"
+                className="input-base text-xs py-2"
+              />
+            </div>
+          </div>
+
+          <div className="mt-5 flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setIsEditBusinessModalOpen(false)}
+              className="btn-secondary text-xs py-2 px-4 cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSavingBusiness}
+              className="btn-primary text-xs py-2 px-4 cursor-pointer flex items-center gap-1.5"
+            >
+              {isSavingBusiness ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>Guardando...</span>
+                </>
+              ) : (
+                <>
+                  <Check size={15} />
+                  <span>Guardar Cambios</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

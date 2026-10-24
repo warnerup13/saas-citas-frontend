@@ -11,17 +11,23 @@ const BusinessContext = createContext();
  * Normaliza un registro de negocio proveniente de la base de datos / API
  */
 export const normalizeBusiness = (b) => {
+  const telefonoBot = b.whatsapp_number || b.whatsappNumber || b.telefonoBot || b.telefono || "No especificado";
+  const telefonoContacto = b.contact_phone || b.contactPhone || b.telefonoContacto || b.telefonoPersonal || "";
+
   return {
     id: b.id,
     nombre: b.name || b.nombre || "Comercio",
     rubro: b.category || b.rubro || "Servicios",
-    telefono: b.whatsapp_number || b.whatsappNumber || b.telefono || "No especificado",
+    telefonoBot,
+    telefonoContacto,
+    telefono: telefonoBot,
     email: b.email || "",
-    googleCalendarEmail: b.calendar_email || b.googleCalendarEmail || "",
+    googleCalendarEmail: b.google_calendar_id || b.calendar_email || b.googleCalendarEmail || "",
     activo: b.is_bot_active !== undefined ? Boolean(b.is_bot_active) : (b.activo !== undefined ? Boolean(b.activo) : true),
     citasSemana: b.citas_semana || b.citasSemana || 0,
-    calendarConnected: Boolean(b.calendar_email || b.googleCalendarEmail || b.calendarConnected),
+    calendarConnected: Boolean(b.google_calendar_id || b.calendar_email || b.googleCalendarEmail || b.calendarConnected),
     timezone: b.timezone || "America/Caracas",
+    greetingMessage: b.greeting_message || b.greetingMessage || "",
     horario: b.horario || {
       lun: { abre: true, desde: "09:00", hasta: "19:00" },
       mar: { abre: true, desde: "09:00", hasta: "19:00" },
@@ -127,11 +133,13 @@ export function BusinessProvider({ children }) {
     try {
       const res = await businessService.createBusiness({
         name: nueva.nombre,
-        email: nueva.email || `${nueva.nombre.toLowerCase().replace(/\s+/g, '')}@negocio.com`,
+        email: nueva.email || `${nueva.nombre.toLowerCase().replace(/[^a-z0-9]/g, '')}@negocio.com`,
         password: nueva.password || "negocio123",
-        whatsapp_number: nueva.telefono,
+        whatsapp_number: nueva.telefonoBot || nueva.telefono,
+        contact_phone: nueva.telefonoContacto || null,
         calendar_email: nueva.googleCalendarEmail,
         timezone: nueva.timezone || "America/Caracas",
+        greeting_message: nueva.greetingMessage || "",
       });
 
       if (res?.data) {
@@ -148,7 +156,9 @@ export function BusinessProvider({ children }) {
       id: uid(),
       nombre: nueva.nombre,
       rubro: nueva.rubro,
-      telefono: nueva.telefono,
+      telefonoBot: nueva.telefonoBot || nueva.telefono,
+      telefonoContacto: nueva.telefonoContacto || "",
+      telefono: nueva.telefonoBot || nueva.telefono,
       email: nueva.email || "",
       googleCalendarEmail: nueva.googleCalendarEmail || "",
       activo: true,
@@ -178,13 +188,30 @@ export function BusinessProvider({ children }) {
     showToast(`Comercio "${emp?.nombre}" eliminado`, "info");
   };
 
-  // Actualizar cualquier propiedad parcial de una empresa (silencioso por defecto)
-  const actualizarEmpresa = (id, patch, silent = true) => {
+  // Actualizar cualquier propiedad de una empresa (con sincronización al backend)
+  const actualizarEmpresa = async (id, patch, silent = true) => {
     setEmpresas((prev) =>
       prev.map((emp) => (emp.id === id ? { ...emp, ...patch } : emp))
     );
-    if (!silent) {
-      showToast("Cambios guardados correctamente");
+
+    try {
+      const res = await businessService.updateBusiness(id, patch);
+      if (res?.data) {
+        const updated = normalizeBusiness(res.data);
+        setEmpresas((prev) =>
+          prev.map((emp) => (emp.id === id ? { ...emp, ...updated } : emp))
+        );
+      }
+      if (!silent) {
+        showToast("Información del comercio guardada correctamente");
+      }
+      return { success: true, data: res?.data };
+    } catch (err) {
+      console.warn("Fallo sincronización con backend al actualizar comercio:", err?.message);
+      if (!silent) {
+        showToast("Cambios guardados localmente (sin conexión con el backend)", "info");
+      }
+      return { success: false, error: err };
     }
   };
 

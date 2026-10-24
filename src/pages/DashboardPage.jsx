@@ -13,6 +13,7 @@ import {
   Server,
   Lock,
   Sparkles,
+  Phone,
 } from "lucide-react";
 import { useBusiness } from "../context/BusinessContext";
 import { useAuth } from "../context/AuthContext";
@@ -42,7 +43,8 @@ export default function DashboardPage() {
     email: "",
     password: "password123",
     rubro: "Peluquería",
-    telefono: "+58 412 123 4567",
+    telefonoBot: "",
+    telefonoContacto: "",
     googleCalendarEmail: "",
   });
 
@@ -55,11 +57,12 @@ export default function DashboardPage() {
 
   const handleCrearNegocio = async (e) => {
     e.preventDefault();
-    if (!nuevoNegocio.nombre.trim()) return;
+    if (!nuevoNegocio.nombre.trim() || !nuevoNegocio.telefonoBot.trim()) return;
     setIsSubmitting(true);
     try {
       await agregarEmpresa({
         ...nuevoNegocio,
+        telefono: nuevoNegocio.telefonoBot,
         servicios: [
           { id: Date.now(), nombre: "Servicio General", duracion: 30, precio: 30000, nota: "" }
         ]
@@ -69,7 +72,8 @@ export default function DashboardPage() {
         email: "",
         password: "password123",
         rubro: "Peluquería",
-        telefono: "+58 412 123 4567",
+        telefonoBot: "",
+        telefonoContacto: "",
         googleCalendarEmail: "",
       });
       setIsModalOpen(false);
@@ -283,16 +287,47 @@ export default function DashboardPage() {
             </select>
           </div>
 
-          <div>
-            <label className="label-base">Teléfono de WhatsApp del Local</label>
-            <input
-              type="text"
-              required
-              value={nuevoNegocio.telefono}
-              onChange={(e) => setNuevoNegocio({ ...nuevoNegocio, telefono: e.target.value })}
-              placeholder="+58 412 123 4567"
-              className="input-base"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div>
+              <label className="label-base flex items-center justify-between">
+                <span>Teléfono Bot (WhatsApp)</span>
+                <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Requerido</span>
+              </label>
+              <div className="relative">
+                <Bot size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  required
+                  value={nuevoNegocio.telefonoBot}
+                  onChange={(e) => setNuevoNegocio({ ...nuevoNegocio, telefonoBot: e.target.value })}
+                  placeholder="ej: 584121234567"
+                  className="input-base pl-9 sm:pl-10"
+                />
+              </div>
+              <p className="mt-1 text-[10px] text-slate-400">
+                Línea que atiende el bot de WhatsApp.
+              </p>
+            </div>
+
+            <div>
+              <label className="label-base flex items-center justify-between">
+                <span>Teléfono Personal / Contacto</span>
+                <span className="text-[10px] text-slate-400">Personal</span>
+              </label>
+              <div className="relative">
+                <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={nuevoNegocio.telefonoContacto}
+                  onChange={(e) => setNuevoNegocio({ ...nuevoNegocio, telefonoContacto: e.target.value })}
+                  placeholder="ej: 584149876543"
+                  className="input-base pl-9 sm:pl-10"
+                />
+              </div>
+              <p className="mt-1 text-[10px] text-slate-400">
+                Contacto directo del dueño o encargado.
+              </p>
+            </div>
           </div>
 
           <div>
