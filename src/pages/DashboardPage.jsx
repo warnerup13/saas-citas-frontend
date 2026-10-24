@@ -12,7 +12,6 @@ import {
   RefreshCw,
   Server,
   Lock,
-  Sparkles,
   Phone,
 } from "lucide-react";
 import { useBusiness } from "../context/BusinessContext";
@@ -30,7 +29,6 @@ export default function DashboardPage() {
     cargarEmpresas,
     isLoading,
     isBackendLoaded,
-    error,
     stats,
   } = useBusiness();
   const { user, isAdmin } = useAuth();
@@ -72,11 +70,7 @@ export default function DashboardPage() {
         email: "",
         password: "password123",
         rubro: "Peluquería",
-<<<<<<< HEAD
         telefonoBot: "",
-=======
-        telefono: "+58 412 123 4567",
->>>>>>> e858234caf68de8b72fa4230596ef4a27797eeaf
         telefonoContacto: "",
         googleCalendarEmail: "",
       });

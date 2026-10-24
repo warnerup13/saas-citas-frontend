@@ -13,24 +13,17 @@ import {
   CalendarCheck,
   Save,
   RefreshCw,
-<<<<<<< HEAD
   Bot,
   Mail,
   Building2,
   Globe,
-  MessageSquare,
-=======
   Share2,
->>>>>>> e858234caf68de8b72fa4230596ef4a27797eeaf
 } from "lucide-react";
 import { useBusiness } from "../context/BusinessContext";
 import { useToast } from "../context/ToastContext";
 import BotToggle from "../components/common/BotToggle";
-<<<<<<< HEAD
 import Modal from "../components/common/Modal";
-=======
 import ShareBusinessModal from "../components/common/ShareBusinessModal";
->>>>>>> e858234caf68de8b72fa4230596ef4a27797eeaf
 import { money, fechaLarga, DIAS, uid } from "../utils/formatters";
 import { servicesService, settingsService, businessService } from "../services";
 
@@ -422,7 +415,6 @@ export default function BusinessDetailPage() {
             </span>
           </div>
 
-<<<<<<< HEAD
           <div className="mt-2.5 flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-2 text-xs text-slate-500">
             <span className="flex items-center gap-1.5 font-medium">
               <Scissors size={13} className="text-slate-400" /> {empresa.rubro}
@@ -431,10 +423,10 @@ export default function BusinessDetailPage() {
               <Bot size={13} className="text-emerald-600 shrink-0" />
               <span>Bot WhatsApp: {empresa.telefonoBot || empresa.telefono}</span>
             </span>
-            {empresa.telefonoContacto ? (
+            {empresa.telefonoContacto || empresa.contact_phone ? (
               <span className="flex items-center gap-1.5 font-semibold text-blue-700 bg-blue-50/80 px-2.5 py-1 rounded-xl border border-blue-200/60 text-[11px] sm:text-xs">
                 <Phone size={12} className="text-blue-600 shrink-0" />
-                <span>Contacto Personal: {empresa.telefonoContacto}</span>
+                <span>Contacto Personal: {empresa.telefonoContacto || empresa.contact_phone}</span>
               </span>
             ) : (
               <span className="flex items-center gap-1.5 text-slate-400 italic text-[11px]">
@@ -447,16 +439,6 @@ export default function BusinessDetailPage() {
               </span>
             )}
             <span className="flex items-center gap-1 text-cyan-700 bg-cyan-50/80 px-2.5 py-1 rounded-xl border border-cyan-200/60 font-semibold text-[11px] truncate max-w-full">
-=======
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1.5 text-xs text-slate-500">
-            <span className="flex items-center gap-1.5 font-medium" title="WhatsApp del Bot"><Phone size={13} /> Bot: {empresa.telefono}</span>
-            {empresa.contact_phone && (
-              <span className="flex items-center gap-1.5 font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200/60" title="Teléfono del dueño / contacto directo">
-                <Phone size={12} className="text-emerald-600" /> Dueño: {empresa.contact_phone}
-              </span>
-            )}
-            <span className="flex items-center gap-1 text-cyan-700 bg-cyan-50/80 px-2 py-0.5 rounded-lg border border-cyan-200/60 font-semibold text-[11px] truncate max-w-full">
->>>>>>> e858234caf68de8b72fa4230596ef4a27797eeaf
               <CalendarCheck size={12} className="text-cyan-600 shrink-0" />
               Calendar: {empresa.googleCalendarEmail || "Sin vincular"}
             </span>
@@ -466,8 +448,7 @@ export default function BusinessDetailPage() {
           </div>
         </div>
 
-<<<<<<< HEAD
-        {/* Acciones del Comercio: Editar Información y Switch del Bot */}
+        {/* Acciones del Encabezado: Editar Información, Compartir WhatsApp y Switch del Bot */}
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0">
           <button
             onClick={handleAbrirEditarComercio}
@@ -475,6 +456,16 @@ export default function BusinessDetailPage() {
           >
             <Pencil size={14} className="text-brand-600" />
             <span>Editar Información</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMostrarModalShare(true)}
+            className="btn-primary text-xs py-2 sm:py-2.5 px-3 sm:px-3.5 flex items-center gap-1.5 cursor-pointer bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border-emerald-300"
+            title="Compartir enlace de WhatsApp o escribirle al comercio"
+          >
+            <Share2 size={14} />
+            <span>Compartir WhatsApp</span>
           </button>
 
           {/* Card de activación rápida del Bot */}
@@ -489,32 +480,6 @@ export default function BusinessDetailPage() {
                 </p>
                 <p className="text-[10px] text-slate-500 leading-tight">
                   {empresa.activo ? "Agenda citas" : "Sin respuestas"}
-=======
-        {/* Acciones principales del encabezado */}
-        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
-          <button
-            type="button"
-            onClick={() => setMostrarModalShare(true)}
-            className="btn-primary text-xs py-2.5 px-3.5 flex items-center gap-1.5 cursor-pointer bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border-emerald-300"
-            title="Compartir enlace de WhatsApp o escribirle al comercio"
-          >
-            <Share2 size={14} />
-            <span>Compartir WhatsApp</span>
-          </button>
-
-          {/* Card de activación rápida del Bot */}
-          <div className={`flex items-center justify-between sm:justify-start gap-3 rounded-2xl p-3 sm:p-4 border transition-colors shrink-0 ${
-            empresa.activo ? "bg-emerald-50/70 border-emerald-200/60" : "bg-slate-100/70 border-slate-200"
-          }`}>
-            <div className="flex items-center gap-3">
-              <Power size={18} className={empresa.activo ? "text-emerald-600" : "text-slate-400"} />
-              <div>
-                <p className="text-xs font-semibold text-slate-900">
-                  {empresa.activo ? "Bot respondiendo" : "Bot en pausa"}
-                </p>
-                <p className="text-[10px] sm:text-[11px] text-slate-500">
-                  {empresa.activo ? "Atiende y agenda citas" : "Sin respuestas"}
->>>>>>> e858234caf68de8b72fa4230596ef4a27797eeaf
                 </p>
               </div>
             </div>
@@ -828,8 +793,6 @@ export default function BusinessDetailPage() {
           </div>
         </div>
       )}
-<<<<<<< HEAD
-
       {/* Modal para Modificar Información del Comercio */}
       <Modal
         isOpen={isEditBusinessModalOpen}
@@ -1035,14 +998,13 @@ export default function BusinessDetailPage() {
           </div>
         </form>
       </Modal>
-=======
+
       {/* Modal para Compartir Enlace y Número de WhatsApp */}
       <ShareBusinessModal
         isOpen={mostrarModalShare}
         onClose={() => setMostrarModalShare(false)}
         empresa={empresa}
       />
->>>>>>> e858234caf68de8b72fa4230596ef4a27797eeaf
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Building2, ChevronRight, CalendarOff, Phone, Scissors, CalendarCheck, Bot } from "lucide-react";
+import { Building2, ChevronRight, CalendarOff, Phone, Scissors, CalendarCheck, Bot, MessageCircle } from "lucide-react";
 import BotToggle from "../common/BotToggle";
 import ShareBusinessModal from "../common/ShareBusinessModal";
 import { fechaLarga } from "../../utils/formatters";
