@@ -139,6 +139,44 @@ export const settingsService = {
     const response = await apiClient.delete(`/settings/holidays/${id}`);
     return response.data;
   },
+
+  /**
+   * Obtiene las próximas citas sincronizadas en Google Calendar para el comercio autenticado
+   * @param {number} [maxResults=20]
+   * @returns {Promise<{ success: boolean, count: number, calendarId: string, appointments: Array }>}
+   */
+  async getCalendarAppointments(maxResults = 20) {
+    const response = await apiClient.get("/settings/calendar-appointments", {
+      params: { maxResults },
+    });
+    return response.data;
+  },
+
+  /**
+   * Obtiene la lista de clientes registrados por el bot de WhatsApp
+   * @param {number} [limit=100]
+   * @returns {Promise<{ success: boolean, count: number, data: Array }>}
+   */
+  async getClients(limit = 100) {
+    const response = await apiClient.get("/settings/clients", {
+      params: { limit },
+    });
+    return response.data;
+  },
+
+  /**
+   * Obtiene la conversación completa entre el bot y un cliente
+   * @param {string} phone
+   * @param {number} [limit=150]
+   * @returns {Promise<{ success: boolean, count: number, phone: string, data: Array }>}
+   */
+  async getConversation(phone, limit = 150) {
+    const response = await apiClient.get(`/settings/messages/${encodeURIComponent(phone)}`, {
+      params: { limit },
+    });
+    return response.data;
+  },
 };
 
 export default settingsService;
+

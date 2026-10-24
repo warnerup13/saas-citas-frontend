@@ -15,6 +15,8 @@ import {
   Smile,
   HeartPulse,
   ChevronRight,
+  List,
+  X,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -32,7 +34,6 @@ const DEMO_NEGOCIOS = [
     ],
     horarioHoy: "09:00 - 19:00",
     huecosHoy: ["11:00 AM", "02:30 PM", "04:15 PM", "05:30 PM"],
-    saludoInicial: "¡Hola! 👋 Bienvenido a Peluquería Amaranta. ¿En qué te podemos consentir hoy?",
   },
   {
     id: "dental",
@@ -47,7 +48,6 @@ const DEMO_NEGOCIOS = [
     ],
     horarioHoy: "08:00 - 18:00",
     huecosHoy: ["10:00 AM", "12:00 PM", "03:00 PM", "04:30 PM"],
-    saludoInicial: "¡Hola! 🦷 Gracias por comunicarte con Clínica Sonrisas VIP. ¿Te gustaría agendar una valoración o una limpieza?",
   },
   {
     id: "spa",
@@ -62,9 +62,42 @@ const DEMO_NEGOCIOS = [
     ],
     horarioHoy: "10:00 - 20:00",
     huecosHoy: ["11:30 AM", "01:00 PM", "04:00 PM", "06:30 PM"],
-    saludoInicial: "¡Bienvenida a Renacer Spa! ✨ Permítenos ayudarte a desconectar. ¿Qué tratamiento deseas agendar?",
   },
 ];
+
+/* ---------- Helpers ---------- */
+
+// Convierte *texto* en negrita, igual que WhatsApp
+const renderTexto = (texto) =>
+  texto.split(/(\*[^*]+\*)/g).map((p, i) =>
+    p.startsWith("*") && p.endsWith("*") && p.length > 2 ? (
+      <strong key={i}>{p.slice(1, -1)}</strong>
+    ) : (
+      <span key={i}>{p}</span>
+    )
+  );
+
+const horaAhora = () =>
+  new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+// Mensaje de bienvenida con lista interactiva (igual que el bot real)
+const mensajeBienvenida = (negocio, hora = "10:00 AM") => ({
+  id: "bot-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+  emisor: "bot",
+  hora,
+  texto: `¡Hola! Bienvenido a *${negocio.nombre}*. Por favor selecciona el servicio que deseas agendar:`,
+  pie: "Selecciona una opción del menú",
+  lista: {
+    boton: "Ver Servicios",
+    opciones: negocio.servicios.map((s, i) => ({
+      id: `srv-${i}`,
+      tipo: "servicio",
+      titulo: s.nombre,
+      descripcion: `${s.duracion} - ${s.precio}`,
+      servicio: s,
+    })),
+  },
+});
 
 export default function DemoPage() {
   const navigate = useNavigate();
@@ -85,6 +118,7 @@ export default function DemoPage() {
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [citaConfirmada, setCitaConfirmada] = useState(null);
+  const [listaAbierta, setListaAbierta] = useState(null);
   const [aiAnalysis, setAiAnalysis] = useState({
     intencion: "Esperando interacción...",
     entidad: null,
@@ -96,6 +130,7 @@ export default function DemoPage() {
 
   useEffect(() => {
     reiniciarChat(negocioActivo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [negocioActivo]);
 
   useEffect(() => {
@@ -104,14 +139,9 @@ export default function DemoPage() {
 
   const reiniciarChat = (negocio) => {
     setCitaConfirmada(null);
-    setMensajes([
-      {
-        id: "m-0",
-        emisor: "bot",
-        texto: negocio.saludoInicial,
-        hora: "10:00 AM",
-      },
-    ]);
+    setListaAbierta(null);
+    setIsTyping(false);
+    setMensajes([mensajeBienvenida(negocio)]);
     setAiAnalysis({
       intencion: "Saludo y Bienvenida",
       entidad: { negocio: negocio.nombre },
@@ -120,29 +150,51 @@ export default function DemoPage() {
     });
   };
 
+  const agregarMensajeBot = (msg) =>
+    setMensajes((prev) => [
+      ...prev,
+      {
+        id: "bot-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
+        emisor: "bot",
+        hora: horaAhora(),
+        ...msg,
+      },
+    ]);
+
+  /* ---------- Texto libre ---------- */
+
   const enviarMensajeCliente = (texto) => {
     if (!texto.trim()) return;
 
-    const horaActual = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const nuevoMensaje = {
-      id: "user-" + Date.now(),
-      emisor: "cliente",
-      texto: texto,
-      hora: horaActual,
-    };
-
-    setMensajes((prev) => [...prev, nuevoMensaje]);
+    const hora = horaAhora();
+    setMensajes((prev) => [
+      ...prev,
+      { id: "user-" + Date.now(), emisor: "cliente", texto, hora },
+    ]);
     setInputText("");
     setIsTyping(true);
 
     setTimeout(() => {
-      procesarRespuestaBot(texto, horaActual);
+      procesarRespuestaBot(texto, hora);
       setIsTyping(false);
     }, 850);
   };
 
-  const procesarRespuestaBot = (textoUser, horaActual) => {
+  const procesarRespuestaBot = (textoUser, hora) => {
     const t = textoUser.toLowerCase();
+
+    // Saludo: reenvía la lista, como el bot real
+    if (t.includes("hola") || t.includes("buenas")) {
+      setMensajes((prev) => [...prev, mensajeBienvenida(negocioActivo, hora)]);
+      setAiAnalysis({
+        intencion: "Saludo y Bienvenida",
+        entidad: { negocio: negocioActivo.nombre },
+        estadoSync: "Menú de lista enviado",
+        confianza: "99%",
+      });
+      return;
+    }
+
     let respuesta = "";
 
     if (t.includes("precio") || t.includes("cuanto cuesta") || t.includes("servicios") || t.includes("tarifa")) {
@@ -166,7 +218,7 @@ export default function DemoPage() {
     } else if (t.includes("confirmar") || t.includes("cita") || t.includes("agendar") || t.includes("quiero") || t.includes("pm") || t.includes("am")) {
       const s = negocioActivo.servicios[0];
       const h = negocioActivo.huecosHoy[1] || "3:00 PM";
-      respuesta = `¡Excelente! He agendado y bloqueado tu turno en Google Calendar 🎉:\n\n📅 Fecha: Hoy\n⏰ Hora: ${h}\n✂️ Servicio: ${s.nombre} (${s.duracion})\n💰 Total: ${s.precio}\n\nTe esperamos con gusto. Te enviaré un recordatorio antes de tu turno.`;
+      respuesta = `¡Listo! Tu cita quedó agendada ✅\n\n📅 *Fecha:* Hoy\n⏰ *Hora:* ${h}\n✂️ *Servicio:* ${s.nombre} (${s.duracion})\n💰 *Total:* ${s.precio}\n\nTe enviaré un recordatorio antes de tu turno.`;
       setCitaConfirmada({
         servicio: s.nombre,
         hora: h,
@@ -188,7 +240,7 @@ export default function DemoPage() {
         confianza: "97%",
       });
     } else {
-      respuesta = `Con gusto te colaboro con eso ✨. Puedo darte horarios disponibles en tiempo real, agendar tu cita o darte información de servicios. ¿Deseas ver los horarios de hoy?`;
+      respuesta = `Con gusto te colaboro con eso ✨. Puedo darte horarios disponibles en tiempo real, agendar tu cita o darte información de servicios. Escribe *Hola* para ver el menú de servicios.`;
       setAiAnalysis({
         intencion: "Conversación General / Asistencia",
         entidad: null,
@@ -203,12 +255,67 @@ export default function DemoPage() {
         id: "bot-" + Date.now(),
         emisor: "bot",
         texto: respuesta,
-        hora: horaActual,
+        hora,
       },
     ]);
   };
 
+  /* ---------- Selección desde la lista interactiva ---------- */
+
+  const seleccionarOpcion = (op) => {
+    setListaAbierta(null);
+    setMensajes((prev) => [
+      ...prev,
+      { id: "user-" + Date.now(), emisor: "cliente", texto: op.titulo, hora: horaAhora() },
+    ]);
+    setIsTyping(true);
+
+    setTimeout(() => {
+      if (op.tipo === "servicio") {
+        agregarMensajeBot({
+          texto: `Perfecto, elegiste *${op.servicio.nombre}* (${op.descripcion}). Ahora selecciona el horario disponible de hoy:`,
+          pie: "Selecciona una opción del menú",
+          lista: {
+            boton: "Ver Horarios",
+            opciones: negocioActivo.huecosHoy.map((h, i) => ({
+              id: `hr-${i}`,
+              tipo: "hora",
+              titulo: h,
+              descripcion: "Hoy · Disponible",
+              servicio: op.servicio,
+            })),
+          },
+        });
+        setAiAnalysis({
+          intencion: "Selección de Servicio",
+          entidad: { servicio: op.servicio.nombre },
+          estadoSync: "Google Calendar API Query (0.4s)",
+          confianza: "99%",
+        });
+      } else {
+        const s = op.servicio;
+        agregarMensajeBot({
+          texto: `¡Listo! Tu cita quedó agendada ✅\n\n📅 *Fecha:* Hoy\n⏰ *Hora:* ${op.titulo}\n✂️ *Servicio:* ${s.nombre} (${s.duracion})\n💰 *Total:* ${s.precio}\n\nTe enviaré un recordatorio antes de tu turno.`,
+        });
+        setCitaConfirmada({
+          servicio: s.nombre,
+          hora: op.titulo,
+          duracion: s.duracion,
+          precio: s.precio,
+        });
+        setAiAnalysis({
+          intencion: "Creación de Evento en Google Calendar",
+          entidad: { servicio: s.nombre, hora: op.titulo, cliente: "WhatsApp User" },
+          estadoSync: "Google Calendar Event Created (201 Created)",
+          confianza: "100%",
+        });
+      }
+      setIsTyping(false);
+    }, 700);
+  };
+
   const botonesRapidos = [
+    "👋 Hola",
     "📅 ¿Qué horarios tienen hoy?",
     "💰 Ver servicios y precios",
     "✂️ Quiero confirmar cita a las " + (negocioActivo.huecosHoy[1] || "3:00 PM"),
@@ -227,7 +334,6 @@ export default function DemoPage() {
               </div>
               <span className="font-display text-xl sm:text-2xl font-bold tracking-tight text-slate-900 truncate">
                 mycitas
-                {/* <span className="text-cyan-500">.glass</span> */}
               </span>
             </Link>
             <span className="hidden md:inline-flex glass-pill-cyan text-xs font-bold shrink-0">
@@ -295,11 +401,11 @@ export default function DemoPage() {
 
         {/* Grid Principal: Chat Simulator + AI Inspector */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
-          
-          {/* SIMULADOR WHATSAPP NOVA GLASS (Col 7) */}
+
+          {/* SIMULADOR WHATSAPP (Col 7) */}
           <div className="lg:col-span-7 w-full">
-            <div className="glass-panel overflow-hidden flex flex-col h-[500px] sm:h-[600px] lg:h-[650px] shadow-glass-lg">
-              
+            <div className="glass-panel relative overflow-hidden flex flex-col h-[500px] sm:h-[600px] lg:h-[650px] shadow-glass-lg">
+
               {/* Header de WhatsApp */}
               <div className="bg-slate-950 px-3.5 sm:px-5 py-3 sm:py-3.5 flex items-center justify-between text-white border-b border-white/10 shrink-0">
                 <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -312,7 +418,7 @@ export default function DemoPage() {
                       <h3 className="font-bold text-xs sm:text-sm leading-tight text-white font-display truncate">
                         {negocioActivo.nombre}
                       </h3>
-                      <span className="rounded-md bg-cyan-500/20 px-1.5 py-0.2 text-[9px] sm:text-[10px] text-cyan-300 font-bold border border-cyan-400/30 shrink-0">
+                      <span className="rounded-md bg-cyan-500/20 px-1.5 py-0.5 text-[9px] sm:text-[10px] text-cyan-300 font-bold border border-cyan-400/30 shrink-0">
                         Bot
                       </span>
                     </div>
@@ -332,10 +438,10 @@ export default function DemoPage() {
                 </button>
               </div>
 
-              {/* Área de Mensajes */}
-              <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 bg-gradient-to-b from-slate-50/50 to-white/40">
-                
-                <div className="mx-auto max-w-xs rounded-xl bg-cyan-50/80 border border-cyan-200/70 px-2.5 py-1 text-center text-[10px] sm:text-[11px] text-cyan-900 font-semibold shadow-xs">
+              {/* Área de Mensajes (tema oscuro como WhatsApp) */}
+              <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 bg-[radial-gradient(circle_at_top,#13222b,#0b141a)]">
+
+                <div className="mx-auto max-w-xs rounded-xl bg-[#182229] border border-white/10 px-2.5 py-1 text-center text-[10px] sm:text-[11px] text-slate-300 font-semibold">
                   🔒 Procesado por el motor de IA de mycitas
                 </div>
 
@@ -350,21 +456,35 @@ export default function DemoPage() {
                         className={`flex ${isClient ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[90%] sm:max-w-[85%] rounded-2xl px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm leading-relaxed shadow-sm ${
-                            isClient
-                              ? "bg-gradient-to-r from-brand-600 to-cyan-500 text-white rounded-tr-xs shadow-glow-blue"
-                              : "bg-white/90 backdrop-blur-md text-slate-800 border border-white rounded-tl-xs shadow-xs"
+                          className={`max-w-[90%] sm:max-w-[80%] overflow-hidden rounded-2xl text-xs sm:text-sm leading-relaxed text-slate-100 shadow-sm ${
+                            isClient ? "bg-[#005c4b] rounded-tr-sm" : "bg-[#202c33] rounded-tl-sm"
                           }`}
                         >
-                          <p className="whitespace-pre-line">{m.texto}</p>
-                          <div
-                            className={`mt-1 flex items-center justify-end gap-1 text-[9px] sm:text-[10px] ${
-                              isClient ? "text-blue-100" : "text-slate-400"
-                            }`}
-                          >
-                            <span>{m.hora}</span>
-                            {isClient && <Check size={11} className="text-blue-200" />}
+                          <div className="px-3.5 pt-2 pb-1.5">
+                            {!isClient && (
+                              <p className="text-[11px] sm:text-xs text-slate-300 mb-0.5">
+                                {negocioActivo.nombre}
+                              </p>
+                            )}
+                            <p className="whitespace-pre-line">{renderTexto(m.texto)}</p>
+                            {m.pie && (
+                              <p className="mt-1.5 text-[11px] sm:text-xs text-slate-400">{m.pie}</p>
+                            )}
+                            <div className="mt-1 flex items-center justify-end gap-1 text-[9px] sm:text-[10px] text-slate-400">
+                              <span>{m.hora}</span>
+                              {isClient && <Check size={11} className="text-sky-300" />}
+                            </div>
                           </div>
+
+                          {m.lista && (
+                            <button
+                              onClick={() => setListaAbierta(m.lista)}
+                              className="flex w-full items-center justify-center gap-2 border-t border-white/10 py-2.5 text-xs sm:text-sm font-medium text-slate-200 hover:bg-white/5 transition-colors"
+                            >
+                              <List size={16} />
+                              {m.lista.boton}
+                            </button>
+                          )}
                         </div>
                       </motion.div>
                     );
@@ -377,11 +497,11 @@ export default function DemoPage() {
                     animate={{ opacity: 1, y: 0 }}
                     className="flex justify-start"
                   >
-                    <div className="rounded-2xl bg-white/90 border border-white px-3 sm:px-4 py-2 text-xs text-slate-500 shadow-xs flex items-center gap-2">
-                      <span className="h-1.5 w-1.5 rounded-full bg-brand-600 animate-bounce" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-brand-600 animate-bounce [animation-delay:0.2s]" />
-                      <span className="h-1.5 w-1.5 rounded-full bg-brand-600 animate-bounce [animation-delay:0.4s]" />
-                      <span className="ml-1 text-[11px] sm:text-xs text-slate-500 font-semibold">{negocioActivo.nombre} está respondiendo...</span>
+                    <div className="rounded-2xl bg-[#202c33] px-3 sm:px-4 py-2 text-xs text-slate-300 shadow-xs flex items-center gap-2">
+                      <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-bounce" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-bounce [animation-delay:0.2s]" />
+                      <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-bounce [animation-delay:0.4s]" />
+                      <span className="ml-1 text-[11px] sm:text-xs text-slate-300 font-semibold">{negocioActivo.nombre} está respondiendo...</span>
                     </div>
                   </motion.div>
                 )}
@@ -389,25 +509,66 @@ export default function DemoPage() {
                 <div ref={chatEndRef} />
               </div>
 
-              {/* Botones de respuesta rápida */}
-              <div className="border-t border-slate-200/60 bg-white/70 backdrop-blur-md px-2.5 sm:px-3 py-2 shrink-0">
-                <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 mb-1.5 flex items-center gap-1">
-                  <Sparkles size={11} className="text-brand-600" />
-                  Prueba rápida (clic para enviar):
-                </p>
-                <div className="flex flex-wrap gap-1.5 max-h-20 sm:max-h-24 overflow-y-auto">
-                  {botonesRapidos.map((prompt, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => enviarMensajeCliente(prompt)}
-                      disabled={isTyping}
-                      className="rounded-xl border border-white bg-white/85 px-2.5 py-1 text-[11px] sm:text-xs font-semibold text-slate-700 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 transition-all text-left truncate max-w-full shadow-xs cursor-pointer"
+              {/* Bottom sheet de la lista interactiva */}
+              <AnimatePresence>
+                {listaAbierta && (
+                  <motion.div
+                    key="lista-overlay"
+                    className="absolute inset-0 z-30 flex items-end bg-black/50"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setListaAbierta(null)}
+                  >
+                    <motion.div
+                      className="w-full rounded-t-3xl bg-[#111b21] text-slate-100 shadow-2xl"
+                      initial={{ y: "100%" }}
+                      animate={{ y: 0 }}
+                      exit={{ y: "100%" }}
+                      transition={{ type: "tween", duration: 0.25 }}
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      {prompt}
-                    </button>
-                  ))}
-                </div>
-              </div>
+                      <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-slate-500/60" />
+
+                      <div className="flex items-center gap-4 px-4 py-3 border-b border-white/10">
+                        <button
+                          onClick={() => setListaAbierta(null)}
+                          aria-label="Cerrar"
+                          className="text-slate-300 hover:text-white"
+                        >
+                          <X size={20} />
+                        </button>
+                        <h4 className="flex-1 text-center pr-6 text-base sm:text-lg font-medium">
+                          {listaAbierta.boton}
+                        </h4>
+                      </div>
+
+                      <ul className="max-h-56 overflow-y-auto">
+                        {listaAbierta.opciones.map((op) => (
+                          <li key={op.id}>
+                            <button
+                              onClick={() => seleccionarOpcion(op)}
+                              className="group flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-white/5 transition-colors"
+                            >
+                              <div>
+                                <p className="text-sm sm:text-base">{op.titulo}</p>
+                                <p className="text-xs sm:text-sm text-slate-400">{op.descripcion}</p>
+                              </div>
+                              <span className="h-5 w-5 shrink-0 rounded-full border-2 border-slate-400 group-hover:border-emerald-400 group-active:bg-emerald-400" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <p className="py-4 text-center text-xs sm:text-sm text-slate-400">
+                        Toca para seleccionar un elemento
+                      </p>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+           
 
               {/* Input manual */}
               <form
@@ -415,14 +576,14 @@ export default function DemoPage() {
                   e.preventDefault();
                   enviarMensajeCliente(inputText);
                 }}
-                className="border-t border-slate-200/60 bg-white/90 p-2.5 sm:p-3 flex items-center gap-2 shrink-0"
+                className="border-t border-white/10 bg-[#111b21] p-2.5 sm:p-3 flex items-center gap-2 shrink-0"
               >
                 <input
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder="Escribe un mensaje..."
-                  className="flex-1 rounded-2xl border border-white bg-slate-100/70 px-3.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-800 placeholder-slate-400 outline-none transition-all focus:border-brand-500 focus:bg-white"
+                  className="flex-1 rounded-2xl border border-white/10 bg-[#202c33] px-3.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-100 placeholder-slate-500 outline-none transition-all focus:border-cyan-400/60"
                 />
                 <button
                   type="submit"
@@ -438,7 +599,7 @@ export default function DemoPage() {
 
           {/* INSPECTOR NOVA GLASS (Col 5) */}
           <div className="lg:col-span-5 space-y-4 sm:space-y-5 w-full">
-            
+
             {/* Tarjeta de Cita Agendada */}
             {citaConfirmada && (
               <motion.div
@@ -484,7 +645,7 @@ export default function DemoPage() {
                 </div>
                 <div>
                   <h3 className="text-xs sm:text-sm font-bold font-display text-slate-900">
-                    Motor de Decisión Nova 
+                    Motor de Decisión Nova
                   </h3>
                   <p className="text-[11px] sm:text-xs text-slate-500">
                     Procesamiento de Lenguaje Natural en tiempo real
@@ -532,7 +693,7 @@ export default function DemoPage() {
             {/* Métricas de Rendimiento */}
             <div className="glass-panel p-4 sm:p-6">
               <h3 className="text-xs sm:text-sm font-bold font-display text-slate-900 mb-2.5 sm:mb-3">
-                Métricas Nova 
+                Métricas Nova
               </h3>
               <div className="grid grid-cols-2 gap-2 sm:gap-3 text-center">
                 <div className="rounded-2xl bg-white/70 border border-white p-2.5 sm:p-3 shadow-xs">

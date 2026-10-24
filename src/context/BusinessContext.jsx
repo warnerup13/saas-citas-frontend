@@ -18,9 +18,14 @@ export const normalizeBusiness = (b) => {
     id: b.id,
     nombre: b.name || b.nombre || "Comercio",
     rubro: b.category || b.rubro || "Servicios",
+<<<<<<< HEAD
     telefonoBot,
     telefonoContacto,
     telefono: telefonoBot,
+=======
+    telefono: b.whatsapp_number || b.whatsappNumber || b.telefono || "No especificado",
+    contact_phone: b.contact_phone || b.contactPhone || b.telefonoContacto || b.telefonoDueno || "",
+>>>>>>> e858234caf68de8b72fa4230596ef4a27797eeaf
     email: b.email || "",
     googleCalendarEmail: b.google_calendar_id || b.calendar_email || b.googleCalendarEmail || "",
     activo: b.is_bot_active !== undefined ? Boolean(b.is_bot_active) : (b.activo !== undefined ? Boolean(b.activo) : true),
@@ -135,8 +140,13 @@ export function BusinessProvider({ children }) {
         name: nueva.nombre,
         email: nueva.email || `${nueva.nombre.toLowerCase().replace(/[^a-z0-9]/g, '')}@negocio.com`,
         password: nueva.password || "negocio123",
+<<<<<<< HEAD
         whatsapp_number: nueva.telefonoBot || nueva.telefono,
         contact_phone: nueva.telefonoContacto || null,
+=======
+        whatsapp_number: nueva.telefono,
+        contact_phone: nueva.telefonoContacto || nueva.contact_phone || "",
+>>>>>>> e858234caf68de8b72fa4230596ef4a27797eeaf
         calendar_email: nueva.googleCalendarEmail,
         timezone: nueva.timezone || "America/Caracas",
         greeting_message: nueva.greetingMessage || "",
@@ -156,9 +166,14 @@ export function BusinessProvider({ children }) {
       id: uid(),
       nombre: nueva.nombre,
       rubro: nueva.rubro,
+<<<<<<< HEAD
       telefonoBot: nueva.telefonoBot || nueva.telefono,
       telefonoContacto: nueva.telefonoContacto || "",
       telefono: nueva.telefonoBot || nueva.telefono,
+=======
+      telefono: nueva.telefono,
+      contact_phone: nueva.telefonoContacto || nueva.contact_phone || "",
+>>>>>>> e858234caf68de8b72fa4230596ef4a27797eeaf
       email: nueva.email || "",
       googleCalendarEmail: nueva.googleCalendarEmail || "",
       activo: true,
