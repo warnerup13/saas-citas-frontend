@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bot,
@@ -117,6 +117,14 @@ export default function MerchantPortalPage() {
   const [conversacion, setConversacion] = useState([]);
   const [isLoadingConversacion, setIsLoadingConversacion] = useState(false);
   const [filtroCliente, setFiltroCliente] = useState("");
+  const chatSectionRef = useRef(null);
+  const chatMessagesRef = useRef(null);
+
+  // Al cargar/recibir mensajes, llevar el chat al último mensaje (sin mover la página)
+  useEffect(() => {
+    const el = chatMessagesRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [conversacion, clienteSeleccionado]);
 
   // ID del comercio autenticado
   const businessId = user?.empresaId || user?.id || empresaActual?.id;
@@ -136,6 +144,9 @@ export default function MerchantPortalPage() {
     duracion: 45,
     precio: 0,
     is_active: true,
+    service_type: "normal",
+    maintenance_min_days: 15,
+    maintenance_max_days: 21,
   });
 
   // Cargar catálogo de servicios desde el backend
@@ -151,6 +162,9 @@ export default function MerchantPortalPage() {
           duracion: s.duration_minutes || s.duracion || 60,
           precio: Number(s.price || s.precio || 0),
           is_active: s.is_active !== undefined ? Boolean(s.is_active) : true,
+          service_type: s.service_type || "normal",
+          maintenance_min_days: s.maintenance_min_days !== undefined ? Number(s.maintenance_min_days) : 15,
+          maintenance_max_days: s.maintenance_max_days !== undefined ? Number(s.maintenance_max_days) : 21,
         }));
         setServicios(mapped);
         if (empresaActual?.id) {
@@ -174,6 +188,9 @@ export default function MerchantPortalPage() {
       duracion: 45,
       precio: 0,
       is_active: true,
+      service_type: "normal",
+      maintenance_min_days: 15,
+      maintenance_max_days: 21,
     });
     setMostrarModalServicio(true);
   };
@@ -185,6 +202,9 @@ export default function MerchantPortalPage() {
       duracion: s.duracion || s.duration_minutes || 45,
       precio: s.precio !== undefined ? s.precio : (s.price || 0),
       is_active: s.is_active !== undefined ? Boolean(s.is_active) : true,
+      service_type: s.service_type || "normal",
+      maintenance_min_days: s.maintenance_min_days !== undefined ? Number(s.maintenance_min_days) : 15,
+      maintenance_max_days: s.maintenance_max_days !== undefined ? Number(s.maintenance_max_days) : 21,
     });
     setMostrarModalServicio(true);
   };
@@ -213,6 +233,9 @@ export default function MerchantPortalPage() {
         duration_minutes: dur,
         price: pre,
         is_active: Boolean(formServicio.is_active),
+        service_type: formServicio.service_type || "normal",
+        maintenance_min_days: formServicio.service_type === 'maintenance' ? (Number(formServicio.maintenance_min_days) || 15) : null,
+        maintenance_max_days: formServicio.service_type === 'maintenance' ? (Number(formServicio.maintenance_max_days) || 21) : null,
         businessId,
       };
 
@@ -380,6 +403,9 @@ export default function MerchantPortalPage() {
   // Cargar conversación completa con un cliente seleccionado
   const handleSeleccionarCliente = async (cliente) => {
     setClienteSeleccionado(cliente);
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      chatSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
     setIsLoadingConversacion(true);
     try {
       const res = await settingsService.getConversation(cliente.phone_number, 150);
@@ -1487,6 +1513,15 @@ export default function MerchantPortalPage() {
                                   ${Number(servicio.precio || 0).toFixed(2)}
                                 </span>
                               </div>
+
+                              {servicio.service_type === 'maintenance' && (
+                                <div className="mt-2.5">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                                    <Clock size={11} className="text-amber-600" />
+                                    Mantenimiento ({servicio.maintenance_min_days || 15} a {servicio.maintenance_max_days || 21} días)
+                                  </span>
+                                </div>
+                              )}
                             </div>
 
                             {/* Barra de Acciones de la Tarjeta */}
@@ -1565,7 +1600,7 @@ export default function MerchantPortalPage() {
         /* ============================================================ */
         /* VISTA DE CONVERSACIONES Y CLIENTES (AUDITORÍA COMPLETA)     */
         /* ============================================================ */
-        <section className="glass-panel p-4 sm:p-6 overflow-hidden">
+        <section ref={chatSectionRef} className="glass-panel p-3 sm:p-6 overflow-hidden scroll-mt-20">
           {/* Header de la sección */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/60">
             <div className="flex items-center gap-3">
@@ -1573,10 +1608,10 @@ export default function MerchantPortalPage() {
                 <MessageCircle size={22} />
               </div>
               <div>
-                <h2 className="text-base sm:text-lg font-display font-bold text-slate-900">
+                <h2 className="text-sm sm:text-lg font-display font-bold text-slate-900 leading-snug">
                   Registro de Clientes y Mensajes de WhatsApp
                 </h2>
-                <p className="text-xs text-slate-500">
+                <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
                   Audita y visualiza en tiempo real las conversaciones que el bot mantiene con tus clientes y prospectos.
                 </p>
               </div>
@@ -1585,7 +1620,7 @@ export default function MerchantPortalPage() {
             <button
               onClick={cargarClientes}
               disabled={isLoadingClientes}
-              className="btn-secondary text-xs py-2 px-3 self-start sm:self-auto flex items-center gap-1.5 cursor-pointer"
+              className="btn-secondary text-xs py-2.5 px-3 w-full sm:w-auto justify-center sm:self-auto flex items-center gap-1.5 cursor-pointer"
             >
               <RefreshCw size={13} className={isLoadingClientes ? "animate-spin text-brand-600" : ""} />
               <span>Actualizar Lista</span>
@@ -1593,9 +1628,9 @@ export default function MerchantPortalPage() {
           </div>
 
           {/* Layout dividido: Directorio de Clientes (izq) y Chat Historial (der) */}
-          <div className="mt-4 grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[520px]">
+          <div className="mt-3 sm:mt-4 grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 lg:min-h-[520px]">
             {/* 1. Directorio de Clientes (Lado Izquierdo) */}
-            <div className={`lg:col-span-4 flex flex-col rounded-2xl border border-slate-200/80 bg-white/60 p-3 ${clienteSeleccionado ? 'hidden lg:flex' : 'flex'}`}>
+            <div className={`lg:col-span-4 flex flex-col rounded-2xl border border-slate-200/80 bg-white/60 p-2.5 sm:p-3 ${clienteSeleccionado ? 'hidden lg:flex' : 'flex'}`}>
               <div className="flex items-center justify-between mb-2 px-1">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                   Contactos ({clientesFiltrados.length})
@@ -1615,12 +1650,12 @@ export default function MerchantPortalPage() {
                   value={filtroCliente}
                   onChange={(e) => setFiltroCliente(e.target.value)}
                   placeholder="Buscar por nombre o teléfono..."
-                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-500"
+                  className="w-full pl-8 pr-3 py-2.5 sm:py-1.5 text-base sm:text-xs rounded-xl bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:border-brand-500"
                 />
               </div>
 
               {/* Contenedor de lista */}
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[460px]">
+              <div className="flex-1 overflow-y-auto overscroll-contain space-y-2 pr-1 max-h-[65dvh] lg:max-h-[460px]">
                 {isLoadingClientes && clientes.length === 0 ? (
                   <div className="py-16 text-center text-xs text-slate-400">
                     <RefreshCw size={20} className="animate-spin mx-auto mb-2 text-brand-600" />
@@ -1643,7 +1678,7 @@ export default function MerchantPortalPage() {
                       <div
                         key={cli.id}
                         onClick={() => handleSeleccionarCliente(cli)}
-                        className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 ${
+                        className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-2.5 active:scale-[0.99] min-h-[64px] ${
                           isSelected
                             ? "bg-brand-50 border-brand-300 shadow-sm"
                             : "bg-white/80 border-slate-200/70 hover:bg-white hover:border-slate-300"
@@ -1687,23 +1722,24 @@ export default function MerchantPortalPage() {
             </div>
 
             {/* 2. Visor de Conversación (Lado Derecho) */}
-            <div className={`lg:col-span-8 flex flex-col rounded-2xl border border-slate-200/80 bg-white/70 overflow-hidden ${!clienteSeleccionado ? 'hidden lg:flex' : 'flex'}`}>
+            <div className={`lg:col-span-8 flex flex-col rounded-2xl border border-slate-200/80 bg-white/70 overflow-hidden min-w-0 ${!clienteSeleccionado ? 'hidden lg:flex' : 'flex'}`}>
               {clienteSeleccionado ? (
                 <>
                   {/* Top Bar del Chat */}
-                  <div className="p-3.5 border-b border-slate-200 bg-white/90 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-2.5 sm:p-3.5 border-b border-slate-200 bg-white/90 flex items-center justify-between gap-2 sticky top-0 z-10">
+                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1">
                       <button
                         onClick={() => setClienteSeleccionado(null)}
-                        className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 cursor-pointer"
+                        className="lg:hidden shrink-0 h-10 w-10 flex items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 active:bg-slate-200 cursor-pointer"
                         title="Volver a la lista de clientes"
+                        aria-label="Volver a la lista de clientes"
                       >
-                        <ArrowLeft size={16} />
+                        <ArrowLeft size={18} />
                       </button>
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white font-bold text-xs shadow-sm">
                         {clienteSeleccionado.name?.charAt(0)?.toUpperCase() || "C"}
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold text-slate-900 truncate">
                           {clienteSeleccionado.name || "Cliente WhatsApp"}
                         </p>
@@ -1715,11 +1751,12 @@ export default function MerchantPortalPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                       <button
                         onClick={() => handleSeleccionarCliente(clienteSeleccionado)}
                         disabled={isLoadingConversacion}
-                        className="btn-secondary text-xs py-1.5 px-2.5 cursor-pointer"
+                        className="btn-secondary text-xs h-10 sm:h-auto py-1.5 px-3 sm:px-2.5 cursor-pointer"
+                        aria-label="Recargar mensajes"
                         title="Recargar mensajes"
                       >
                         <RefreshCw size={12} className={isLoadingConversacion ? "animate-spin text-brand-600" : ""} />
@@ -1729,7 +1766,7 @@ export default function MerchantPortalPage() {
                         href={`https://wa.me/${clienteSeleccionado.phone_number.replace(/\D/g, '')}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1"
+                        className="btn-primary text-xs h-10 sm:h-auto py-1.5 px-3 flex items-center gap-1"
                       >
                         <ExternalLink size={12} />
                         <span className="hidden sm:inline">Abrir en WhatsApp</span>
@@ -1739,7 +1776,7 @@ export default function MerchantPortalPage() {
                   </div>
 
                   {/* Área de Mensajes */}
-                  <div className="flex-1 p-4 overflow-y-auto space-y-3 max-h-[440px] min-h-[380px] bg-slate-50/50">
+                  <div ref={chatMessagesRef} className="flex-1 p-3 sm:p-4 overflow-y-auto overscroll-contain space-y-3 h-[calc(100dvh-16rem)] min-h-[320px] sm:h-auto sm:min-h-[380px] sm:max-h-[440px] bg-slate-50/50">
                     {isLoadingConversacion ? (
                       <div className="py-24 text-center text-xs text-slate-400">
                         <RefreshCw size={20} className="animate-spin mx-auto mb-2 text-brand-600" />
@@ -1764,17 +1801,17 @@ export default function MerchantPortalPage() {
                             className={`flex ${esBot ? 'justify-end' : 'justify-start'}`}
                           >
                             <div
-                              className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 shadow-xs text-xs ${
+                              className={`max-w-[90%] sm:max-w-[75%] min-w-0 rounded-2xl p-2.5 sm:p-3 shadow-xs text-xs ${
                                 esBot
                                   ? "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-br-xs border border-white/10"
                                   : "bg-white border border-slate-200/90 text-slate-800 rounded-bl-xs"
                               }`}
                             >
-                              <div className="flex items-center justify-between gap-3 mb-1 text-[10px] font-bold opacity-75">
-                                <span>{esBot ? '🤖 Bot de WhatsApp' : (clienteSeleccionado.name || 'Cliente')}</span>
-                                <span>{hora.hora ? `${hora.fecha} · ${hora.hora}` : ''}</span>
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 sm:gap-3 mb-1 text-[10px] font-bold opacity-75">
+                                <span className="truncate">{esBot ? '🤖 Bot de WhatsApp' : (clienteSeleccionado.name || 'Cliente')}</span>
+                                <span className="font-medium whitespace-nowrap">{hora.hora ? `${hora.fecha} · ${hora.hora}` : ''}</span>
                               </div>
-                              <p className="whitespace-pre-line leading-relaxed text-[11px] sm:text-xs break-words">
+                              <p className="whitespace-pre-line leading-relaxed text-xs break-words [overflow-wrap:anywhere]">
                                 {msg.content}
                               </p>
                               {msg.message_type === 'confirmation' && (
@@ -1790,7 +1827,7 @@ export default function MerchantPortalPage() {
                   </div>
 
                   {/* Footer informativo */}
-                  <div className="p-2.5 bg-slate-100/70 border-t border-slate-200/60 text-[10px] sm:text-[11px] text-slate-500 text-center">
+                  <div className="hidden sm:block p-2.5 bg-slate-100/70 border-t border-slate-200/60 text-[10px] sm:text-[11px] text-slate-500 text-center">
                     💡 <strong>Registro de atención automatizada:</strong> Puedes ver en vivo cada respuesta del bot y hacer seguimiento a tus clientes.
                   </div>
                 </>
@@ -1801,7 +1838,7 @@ export default function MerchantPortalPage() {
                   </div>
                   <h3 className="text-sm font-bold text-slate-700">Selecciona un cliente</h3>
                   <p className="text-xs text-slate-400 max-w-xs mt-1">
-                    Elige un contacto del directorio a la izquierda para leer el historial completo de su conversación con el bot de WhatsApp.
+                    Elige un contacto del directorio para leer el historial completo de su conversación con el bot de WhatsApp.
                   </p>
                 </div>
               )}
@@ -1924,6 +1961,56 @@ export default function MerchantPortalPage() {
                   </p>
                 </div>
               </div>
+
+              {/* Tipo de servicio */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Tipo de servicio</label>
+                <select
+                  value={formServicio.service_type || "normal"}
+                  onChange={(e) => setFormServicio({ ...formServicio, service_type: e.target.value })}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 font-semibold focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 shadow-xs"
+                >
+                  <option value="normal">Normal</option>
+                  <option value="maintenance">Mantenimiento (requiere cita previa del cliente)</option>
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1.5">
+                  Los servicios de mantenimiento solo se ofrecen a clientes que ya tengan una cita previa con su número.
+                </p>
+              </div>
+
+              {formServicio.service_type === 'maintenance' && (
+                <div className="rounded-2xl border border-amber-200/80 bg-amber-50/70 p-3.5 space-y-3">
+                  <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
+                    <Clock size={15} className="text-amber-700" />
+                    <span>Intervalo de días permitido para mantenimiento</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">Días mínimos desde última cita</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={formServicio.maintenance_min_days ?? 15}
+                        onChange={(e) => setFormServicio({ ...formServicio, maintenance_min_days: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 font-bold focus:border-brand-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">Días máximos desde última cita</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={formServicio.maintenance_max_days ?? 21}
+                        onChange={(e) => setFormServicio({ ...formServicio, maintenance_max_days: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs sm:text-sm text-slate-900 font-bold focus:border-brand-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-amber-800 leading-snug">
+                    💡 Ejemplo: Entre 15 y 21 días. Si el cliente escribe antes del día {formServicio.maintenance_min_days || 15} o después del día {formServicio.maintenance_max_days || 21}, el bot no le permitirá agendar mantenimiento y le indicará la razón.
+                  </p>
+                </div>
+              )}
 
               {/* Toggle de Visibilidad / Disponibilidad en el Menú */}
               <div className="rounded-2xl border border-slate-200/90 bg-slate-50/70 p-3.5 sm:p-4">

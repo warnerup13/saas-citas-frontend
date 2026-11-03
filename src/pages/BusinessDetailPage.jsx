@@ -50,6 +50,9 @@ export default function BusinessDetailPage() {
     duracion: 30,
     precio: 0,
     nota: "",
+    service_type: "normal",
+    maintenance_min_days: 15,
+    maintenance_max_days: 21,
   });
 
   // Form state para días cerrados
@@ -76,6 +79,9 @@ export default function BusinessDetailPage() {
             precio: Number(s.price || s.precio),
             nota: s.is_active ? "Servicio Activo" : "Pausado en Bot",
             is_active: s.is_active !== undefined ? s.is_active : true,
+            service_type: s.service_type || "normal",
+            maintenance_min_days: s.maintenance_min_days !== undefined ? Number(s.maintenance_min_days) : 15,
+            maintenance_max_days: s.maintenance_max_days !== undefined ? Number(s.maintenance_max_days) : 21,
           }));
           actualizarEmpresa(empresa.id, { servicios: mappedServices });
         }
@@ -161,6 +167,9 @@ export default function BusinessDetailPage() {
       precio: Number(formServicio.precio) || 0,
       nota: formServicio.nota || "",
       is_active: formServicio.is_active !== undefined ? formServicio.is_active : true,
+      service_type: formServicio.service_type || "normal",
+      maintenance_min_days: Number(formServicio.maintenance_min_days) || 15,
+      maintenance_max_days: Number(formServicio.maintenance_max_days) || 21,
     };
 
     try {
@@ -172,6 +181,9 @@ export default function BusinessDetailPage() {
             duration_minutes: nuevoItem.duracion,
             price: nuevoItem.precio,
             is_active: nuevoItem.is_active,
+            service_type: nuevoItem.service_type,
+            maintenance_min_days: nuevoItem.maintenance_min_days,
+            maintenance_max_days: nuevoItem.maintenance_max_days,
           });
         } catch {
           res = await servicesService.updateService(nuevoItem.id, {
@@ -179,6 +191,9 @@ export default function BusinessDetailPage() {
             duration_minutes: nuevoItem.duracion,
             price: nuevoItem.precio,
             is_active: nuevoItem.is_active,
+            service_type: nuevoItem.service_type,
+            maintenance_min_days: nuevoItem.maintenance_min_days,
+            maintenance_max_days: nuevoItem.maintenance_max_days,
           });
         }
       } else {
@@ -188,6 +203,9 @@ export default function BusinessDetailPage() {
             duration_minutes: nuevoItem.duracion,
             price: nuevoItem.precio,
             is_active: nuevoItem.is_active,
+            service_type: nuevoItem.service_type,
+            maintenance_min_days: nuevoItem.maintenance_min_days,
+            maintenance_max_days: nuevoItem.maintenance_max_days,
           });
         } catch {
           res = await servicesService.createService({
@@ -195,6 +213,9 @@ export default function BusinessDetailPage() {
             duration_minutes: nuevoItem.duracion,
             price: nuevoItem.precio,
             is_active: nuevoItem.is_active,
+            service_type: nuevoItem.service_type,
+            maintenance_min_days: nuevoItem.maintenance_min_days,
+            maintenance_max_days: nuevoItem.maintenance_max_days,
           });
         }
       }
@@ -215,7 +236,7 @@ export default function BusinessDetailPage() {
       });
     } finally {
       setIsSaving(false);
-      setFormServicio({ nombre: "", duracion: 30, precio: 0, nota: "" });
+      setFormServicio({ nombre: "", duracion: 30, precio: 0, nota: "", service_type: "normal", maintenance_min_days: 15, maintenance_max_days: 21 });
       setCreandoServicio(false);
       setEditandoServicio(null);
     }
@@ -492,6 +513,50 @@ export default function BusinessDetailPage() {
                   />
                 </div>
                 <div className="sm:col-span-2">
+                  <label className="label-base">Tipo de servicio</label>
+                  <select
+                    value={formServicio.service_type || "normal"}
+                    onChange={(e) => setFormServicio({ ...formServicio, service_type: e.target.value })}
+                    className="input-base"
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="maintenance">Mantenimiento (requiere cita previa del cliente)</option>
+                  </select>
+                </div>
+                {formServicio.service_type === 'maintenance' && (
+                  <div className="sm:col-span-2 rounded-2xl border border-amber-200/80 bg-amber-50/70 p-3.5 sm:p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-amber-900 font-bold text-xs sm:text-sm">
+                      <Clock size={16} className="text-amber-700" />
+                      <span>Intervalo de días permitido para este mantenimiento</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="label-base text-[11px] text-slate-700">Días mínimos desde última cita</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={formServicio.maintenance_min_days ?? 15}
+                          onChange={(e) => setFormServicio({ ...formServicio, maintenance_min_days: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                          className="input-base bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="label-base text-[11px] text-slate-700">Días máximos desde última cita</label>
+                        <input
+                          type="number"
+                          min="1"
+                          value={formServicio.maintenance_max_days ?? 21}
+                          onChange={(e) => setFormServicio({ ...formServicio, maintenance_max_days: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                          className="input-base bg-white"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-amber-800 leading-snug">
+                      💡 El cliente solo podrá agendar mantenimiento si su última cita ocurrió hace entre <strong>{formServicio.maintenance_min_days || 15}</strong> y <strong>{formServicio.maintenance_max_days || 21} días</strong>.
+                    </p>
+                  </div>
+                )}
+                <div className="sm:col-span-2">
                   <label className="label-base">Nota adicional para el cliente (opcional)</label>
                   <input
                     type="text"
@@ -537,17 +602,24 @@ export default function BusinessDetailPage() {
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-xs sm:text-sm font-bold text-slate-900 truncate">{s.nombre}</p>
-                    <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 flex flex-wrap items-center gap-1.5">
-                      <span>{s.duracion} min</span>
-                      <span>·</span>
-                      <strong className="text-brand-700 font-bold">{money(s.precio)}</strong>
-                      {s.nota && (
-                        <>
-                          <span>·</span>
-                          <span className="truncate max-w-[180px] sm:max-w-xs">{s.nota}</span>
-                        </>
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                      <p className="text-[11px] sm:text-xs text-slate-500 flex flex-wrap items-center gap-1.5">
+                        <span>{s.duracion} min</span>
+                        <span>·</span>
+                        <strong className="text-brand-700 font-bold">{money(s.precio)}</strong>
+                        {s.nota && (
+                          <>
+                            <span>·</span>
+                            <span className="truncate max-w-[180px] sm:max-w-xs">{s.nota}</span>
+                          </>
+                        )}
+                      </p>
+                      {s.service_type === 'maintenance' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          Mantenimiento ({s.maintenance_min_days || 15}-{s.maintenance_max_days || 21} días)
+                        </span>
                       )}
-                    </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button

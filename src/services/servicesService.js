@@ -26,6 +26,9 @@ export const servicesService = {
       duration_minutes: Number(serviceData.duration_minutes || serviceData.duracion || 60),
       price: Number(serviceData.price || serviceData.precio || 0),
       is_active: serviceData.is_active !== undefined ? Boolean(serviceData.is_active) : true,
+      service_type: serviceData.service_type || "normal",
+      ...(serviceData.maintenance_min_days !== undefined ? { maintenance_min_days: Number(serviceData.maintenance_min_days) } : {}),
+      ...(serviceData.maintenance_max_days !== undefined ? { maintenance_max_days: Number(serviceData.maintenance_max_days) } : {}),
       ...(serviceData.businessId ? { businessId: serviceData.businessId } : {}),
       ...(serviceData.business_id ? { business_id: serviceData.business_id } : {}),
     };
@@ -49,6 +52,9 @@ export const servicesService = {
       ...(serviceData.price !== undefined && { price: Number(serviceData.price) }),
       ...(serviceData.precio !== undefined && { price: Number(serviceData.precio) }),
       ...(serviceData.is_active !== undefined && { is_active: Boolean(serviceData.is_active) }),
+      ...(serviceData.service_type !== undefined && { service_type: serviceData.service_type }),
+      ...(serviceData.maintenance_min_days !== undefined && { maintenance_min_days: Number(serviceData.maintenance_min_days) }),
+      ...(serviceData.maintenance_max_days !== undefined && { maintenance_max_days: Number(serviceData.maintenance_max_days) }),
       ...(serviceData.businessId ? { businessId: serviceData.businessId } : {}),
       ...(serviceData.business_id ? { business_id: serviceData.business_id } : {}),
     };

@@ -41,6 +41,9 @@ export const normalizeBusiness = (b) => {
           precio: Number(s.price || s.precio || 0),
           nota: s.is_active ? "Servicio Activo" : "Pausado en Bot",
           is_active: s.is_active !== undefined ? s.is_active : true,
+          service_type: s.service_type || "normal",
+          maintenance_min_days: s.maintenance_min_days !== undefined ? Number(s.maintenance_min_days) : 15,
+          maintenance_max_days: s.maintenance_max_days !== undefined ? Number(s.maintenance_max_days) : 21,
         }))
       : (b.servicios || []),
     createdAt: b.created_at || b.createdAt,
