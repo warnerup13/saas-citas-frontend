@@ -37,6 +37,7 @@ import {
   Share2,
   Phone,
   PhoneCall,
+  Lock,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useBusiness } from "../context/BusinessContext";
@@ -112,24 +113,22 @@ export default function MerchantPortalPage() {
 
   const handleGuardarTelefonos = async (e) => {
     if (e) e.preventDefault();
-    if (!telefonoBot?.trim()) {
-      toast.warning("El teléfono del bot de WhatsApp es obligatorio.");
-      return;
-    }
     setIsSavingPhones(true);
     try {
       const payload = {
-        telefonoBot: telefonoBot.trim(),
-        whatsapp_number: telefonoBot.trim(),
-        telefonoContacto: telefonoContacto.trim(),
-        contact_phone: telefonoContacto.trim(),
+        telefonoContacto: (telefonoContacto || "").trim(),
+        contact_phone: (telefonoContacto || "").trim(),
       };
+      if (telefonoBot?.trim()) {
+        payload.telefonoBot = telefonoBot.trim();
+        payload.whatsapp_number = telefonoBot.trim();
+      }
       const res = await actualizarEmpresa(empresaActual.id, payload, false);
       if (res?.success) {
-        toast.success("Teléfonos actualizados exitosamente.");
+        toast.success("Teléfono de contacto personal guardado correctamente.");
       }
     } catch (err) {
-      toast.error(err, { titulo: "Error al actualizar teléfonos" });
+      toast.error(err, { titulo: "Error al actualizar teléfono" });
     } finally {
       setIsSavingPhones(false);
     }
@@ -914,43 +913,47 @@ export default function MerchantPortalPage() {
                   ) : (
                     <>
                       <Save size={13} />
-                      <span>Guardar Teléfonos</span>
+                      <span>Guardar Teléfono Personal</span>
                     </>
                   )}
                 </button>
               </div>
 
               <form onSubmit={handleGuardarTelefonos} className="mt-4 sm:mt-6 grid gap-4 sm:grid-cols-2">
-                {/* 1. Teléfono del Bot de WhatsApp */}
-                <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-4 space-y-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-                      <Bot size={16} />
+                {/* 1. Teléfono del Bot de WhatsApp (Solo Vista) */}
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                        <Bot size={16} />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-slate-900 block">
+                          Teléfono del Bot de WhatsApp
+                        </label>
+                        <span className="text-[10px] text-emerald-700 font-semibold">
+                          Conectado con Meta Cloud API
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-900 block">
-                        Teléfono del Bot de WhatsApp (Automatizado)
-                      </label>
-                      <span className="text-[10px] text-emerald-700 font-semibold">
-                        Conectado con Meta Cloud API
-                      </span>
-                    </div>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 bg-slate-200/90 px-2 py-0.5 rounded-full shrink-0">
+                      <Lock size={10} className="text-slate-500" /> Solo vista
+                    </span>
                   </div>
 
-                  <div className="relative">
-                    <Smartphone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      required
-                      value={telefonoBot}
-                      disabled={true}
-                      onChange={(e) => setTelefonoBot(e.target.value)}
-                      placeholder="ej: 584169798079"
-                      className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-900 font-bold focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 shadow-xs"
-                    />
+                  <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white/90 px-3.5 py-2.5 shadow-2xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Smartphone size={15} className="text-emerald-600 shrink-0" />
+                      <span className="font-mono font-bold text-slate-800 text-xs sm:text-sm tracking-wide truncate select-all">
+                        {telefonoBot ? (telefonoBot.startsWith('+') ? telefonoBot : ('+' + telefonoBot)) : 'No asignado'}
+                      </span>
+                    </div>
+                    <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-md">
+                      <CheckCircle2 size={11} /> Conectado
+                    </span>
                   </div>
                   <p className="text-[11px] text-slate-500 leading-snug">
-                    Número registrado con el que el bot contesta automáticamente las citas en WhatsApp.
+                    🔒 Número oficial verificado en Meta Cloud API para atender citas. Administrado por soporte técnico.
                   </p>
                 </div>
 
@@ -1247,7 +1250,7 @@ export default function MerchantPortalPage() {
                             onChange={(e) =>
                               handleCambioDia(dia.clave, true, e.target.value, config.hasta)
                             }
-                            className="rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 font-bold text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 text-xs sm:text-sm shadow-xs min-w-[125px] sm:min-w-[135px]"
+                            className="rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 font-bold text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 text-xs sm:text-sm shadow-xs w-[145px] sm:w-[155px] min-w-[145px]"
                           />
                           <span className="text-slate-600 font-semibold shrink-0">Hasta:</span>
                           <input
@@ -1256,7 +1259,7 @@ export default function MerchantPortalPage() {
                             onChange={(e) =>
                               handleCambioDia(dia.clave, true, config.desde, e.target.value)
                             }
-                            className="rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 font-bold text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 text-xs sm:text-sm shadow-xs min-w-[125px] sm:min-w-[135px]"
+                            className="rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 font-bold text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 text-xs sm:text-sm shadow-xs w-[145px] sm:w-[155px] min-w-[145px]"
                           />
                         </div>
                       ) : (

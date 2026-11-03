@@ -781,14 +781,14 @@ export default function BusinessDetailPage() {
                           type="time"
                           value={h.desde}
                           onChange={(e) => setHorarioDia(d.key, { desde: e.target.value })}
-                          className="rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 text-xs sm:text-sm text-slate-900 font-bold shadow-xs min-w-[120px] sm:min-w-[130px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
+                          className="rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 text-xs sm:text-sm text-slate-900 font-bold shadow-xs w-[145px] sm:w-[155px] min-w-[145px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
                         />
                         <span className="text-slate-400 font-medium">a</span>
                         <input
                           type="time"
                           value={h.hasta}
                           onChange={(e) => setHorarioDia(d.key, { hasta: e.target.value })}
-                          className="rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 text-xs sm:text-sm text-slate-900 font-bold shadow-xs min-w-[120px] sm:min-w-[130px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
+                          className="rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 text-xs sm:text-sm text-slate-900 font-bold shadow-xs w-[145px] sm:w-[155px] min-w-[145px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
                         />
                       </div>
                     ) : (
