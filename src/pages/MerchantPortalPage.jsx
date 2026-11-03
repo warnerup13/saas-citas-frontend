@@ -35,6 +35,8 @@ import {
   AlertCircle,
   Settings,
   Share2,
+  Phone,
+  PhoneCall,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useBusiness } from "../context/BusinessContext";
@@ -88,6 +90,50 @@ export default function MerchantPortalPage() {
 
   const [nuevoCierreFecha, setNuevoCierreFecha] = useState("");
   const [nuevoCierreMotivo, setNuevoCierreMotivo] = useState("");
+  // Estado para teléfonos del comercio (Bot de WhatsApp y Contacto Humano Personal)
+  const [telefonoBot, setTelefonoBot] = useState(
+    empresaActual?.telefonoBot || empresaActual?.telefono || user?.whatsappNumber || ""
+  );
+  const [telefonoContacto, setTelefonoContacto] = useState(
+    empresaActual?.telefonoContacto || empresaActual?.contact_phone || user?.contact_phone || ""
+  );
+  const [isSavingPhones, setIsSavingPhones] = useState(false);
+
+  useEffect(() => {
+    if (empresaActual) {
+      if (empresaActual.telefonoBot || empresaActual.telefono) {
+        setTelefonoBot(empresaActual.telefonoBot || empresaActual.telefono);
+      }
+      if (empresaActual.telefonoContacto || empresaActual.contact_phone) {
+        setTelefonoContacto(empresaActual.telefonoContacto || empresaActual.contact_phone);
+      }
+    }
+  }, [empresaActual]);
+
+  const handleGuardarTelefonos = async (e) => {
+    if (e) e.preventDefault();
+    if (!telefonoBot?.trim()) {
+      toast.warning("El teléfono del bot de WhatsApp es obligatorio.");
+      return;
+    }
+    setIsSavingPhones(true);
+    try {
+      const payload = {
+        telefonoBot: telefonoBot.trim(),
+        whatsapp_number: telefonoBot.trim(),
+        telefonoContacto: telefonoContacto.trim(),
+        contact_phone: telefonoContacto.trim(),
+      };
+      const res = await actualizarEmpresa(empresaActual.id, payload, false);
+      if (res?.success) {
+        toast.success("Teléfonos actualizados exitosamente.");
+      }
+    } catch (err) {
+      toast.error(err, { titulo: "Error al actualizar teléfonos" });
+    } finally {
+      setIsSavingPhones(false);
+    }
+  };
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [isUpdatingBot, setIsUpdatingBot] = useState(false);
   const [isAddingHoliday, setIsAddingHoliday] = useState(false);
@@ -658,11 +704,18 @@ export default function MerchantPortalPage() {
                   PORTAL COMERCIO
                 </span>
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-500 flex items-center gap-1.5 mt-0.5 font-medium truncate">
-                <Smartphone size={11} className="text-emerald-600 shrink-0" />
-                <span className="truncate">{user?.whatsappNumber || empresaActual?.telefono || "+58 412 123 4567"}</span>
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              </p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] sm:text-xs text-slate-500 mt-0.5 font-medium">
+                <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold" title="Número del Bot de WhatsApp">
+                  <Bot size={11} className="text-emerald-600 shrink-0" />
+                  <span>Bot: {telefonoBot || user?.whatsappNumber || empresaActual?.telefono || "Sin asignar"}</span>
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                </span>
+                <span className="text-slate-300">·</span>
+                <span className="inline-flex items-center gap-1 text-blue-700 font-semibold" title="Número de Contacto Personal / Humano">
+                  <Phone size={10} className="text-blue-600 shrink-0" />
+                  <span>Contacto: {telefonoContacto || "No configurado"}</span>
+                </span>
+              </div>
             </div>
           </div>
 
@@ -833,6 +886,111 @@ export default function MerchantPortalPage() {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* ============================================================ */}
+        {/* SECCIÓN TELÉFONOS DE CONTACTO (BOT VS PERSONAL)              */}
+        {/* ============================================================ */}
+        <section className="glass-panel p-4 sm:p-7">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 sm:pb-5 border-b border-slate-200/60">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                <PhoneCall size={22} />
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-display font-bold text-slate-900">
+                  Teléfonos de Contacto del Comercio
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                  Configura el número automatizado de WhatsApp y tu número de contacto personal diferente al del bot.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGuardarTelefonos}
+              disabled={isSavingPhones}
+              className="btn-primary text-xs py-2 px-4 self-start sm:self-auto flex items-center gap-1.5 cursor-pointer"
+            >
+              {isSavingPhones ? (
+                <>
+                  <RefreshCw size={13} className="animate-spin" />
+                  <span>Guardando...</span>
+                </>
+              ) : (
+                <>
+                  <Save size={13} />
+                  <span>Guardar Teléfonos</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <form onSubmit={handleGuardarTelefonos} className="mt-4 sm:mt-6 grid gap-4 sm:grid-cols-2">
+            {/* 1. Teléfono del Bot de WhatsApp */}
+            <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/40 p-4 space-y-2.5">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                  <Bot size={16} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-900 block">
+                    Teléfono del Bot de WhatsApp (Automatizado)
+                  </label>
+                  <span className="text-[10px] text-emerald-700 font-semibold">
+                    Conectado con Meta Cloud API
+                  </span>
+                </div>
+              </div>
+
+              <div className="relative">
+                <Smartphone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  required
+                  value={telefonoBot}
+                  onChange={(e) => setTelefonoBot(e.target.value)}
+                  placeholder="ej: 584169798079"
+                  className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-900 font-bold focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 shadow-xs"
+                />
+              </div>
+              <p className="text-[11px] text-slate-500 leading-snug">
+                Número registrado con el que el bot contesta automáticamente las citas en WhatsApp.
+              </p>
+            </div>
+
+            {/* 2. Teléfono de Contacto Humano / Personal (Diferente al del Bot) */}
+            <div className="rounded-2xl border border-blue-200/80 bg-blue-50/40 p-4 space-y-2.5">
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+                  <Phone size={16} />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-900 block">
+                    Teléfono de Contacto Personal (Diferente al Bot)
+                  </label>
+                  <span className="text-[10px] text-blue-700 font-semibold">
+                    Atención Humana / Dueño o Recepción
+                  </span>
+                </div>
+              </div>
+
+              <div className="relative">
+                <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={telefonoContacto}
+                  onChange={(e) => setTelefonoContacto(e.target.value)}
+                  placeholder="ej: 584141234567"
+                  className="w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-900 font-bold focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-xs"
+                />
+              </div>
+              <p className="text-[11px] text-slate-500 leading-snug">
+                El bot compartirá este número personal a tus clientes cuando esté apagado, o si un cliente solicita mantenimiento sin cumplir los días requeridos.
+              </p>
+            </div>
+          </form>
         </section>
 
         {/* ============================================================ */}
@@ -1091,24 +1249,24 @@ export default function MerchantPortalPage() {
 
                   {/* Horario Desde / Hasta */}
                   {config.abre ? (
-                    <div className="flex items-center gap-1.5 sm:gap-2 text-xs pl-11 sm:pl-0 flex-wrap sm:flex-nowrap">
-                      <span className="text-slate-500 font-semibold">Desde:</span>
+                    <div className="flex items-center gap-2 sm:gap-2.5 text-xs pl-11 sm:pl-0 flex-wrap sm:flex-nowrap">
+                      <span className="text-slate-600 font-semibold shrink-0">Desde:</span>
                       <input
                         type="time"
                         value={config.desde}
                         onChange={(e) =>
                           handleCambioDia(dia.clave, true, e.target.value, config.hasta)
                         }
-                        className="rounded-xl border border-white bg-white/90 px-2 py-1 font-bold text-slate-800 outline-none focus:border-brand-500 text-xs shadow-xs min-w-[76px] max-w-[92px]"
+                        className="rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 font-bold text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 text-xs sm:text-sm shadow-xs min-w-[125px] sm:min-w-[135px]"
                       />
-                      <span className="text-slate-500 font-semibold">Hasta:</span>
+                      <span className="text-slate-600 font-semibold shrink-0">Hasta:</span>
                       <input
                         type="time"
                         value={config.hasta}
                         onChange={(e) =>
                           handleCambioDia(dia.clave, true, config.desde, e.target.value)
                         }
-                        className="rounded-xl border border-white bg-white/90 px-2 py-1 font-bold text-slate-800 outline-none focus:border-brand-500 text-xs shadow-xs min-w-[76px] max-w-[92px]"
+                        className="rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 font-bold text-slate-900 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 text-xs sm:text-sm shadow-xs min-w-[125px] sm:min-w-[135px]"
                       />
                     </div>
                   ) : (

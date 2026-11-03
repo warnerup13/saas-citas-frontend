@@ -473,6 +473,14 @@ export default function BusinessDetailPage() {
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0">
           <button
             onClick={handleAbrirEditarComercio}
+            className="flex items-center gap-1.5 rounded-2xl border border-blue-200 bg-blue-50/80 hover:bg-blue-100 text-blue-700 font-bold px-3 sm:px-4 py-2 sm:py-2.5 text-xs shadow-xs active:scale-95 transition-all cursor-pointer"
+            title="Cambiar teléfono del bot o teléfono de contacto personal"
+          >
+            <Phone size={14} className="text-blue-600" />
+            <span>Cambiar Teléfonos</span>
+          </button>
+          <button
+            onClick={handleAbrirEditarComercio}
             className="flex items-center gap-1.5 rounded-2xl border border-brand-200 bg-brand-50/70 hover:bg-brand-100 text-brand-700 font-bold px-3 sm:px-4 py-2 sm:py-2.5 text-xs shadow-xs active:scale-95 transition-all cursor-pointer"
           >
             <Pencil size={14} className="text-brand-600" />
@@ -768,19 +776,19 @@ export default function BusinessDetailPage() {
                     </div>
 
                     {h.abre ? (
-                      <div className="flex items-center gap-1.5 text-xs pl-11 xs:pl-0">
+                      <div className="flex items-center gap-2 text-xs pl-11 xs:pl-0 flex-wrap sm:flex-nowrap">
                         <input
                           type="time"
                           value={h.desde}
                           onChange={(e) => setHorarioDia(d.key, { desde: e.target.value })}
-                          className="rounded-xl border border-white bg-white/90 px-2 py-1 text-xs text-slate-800 font-semibold shadow-xs"
+                          className="rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 text-xs sm:text-sm text-slate-900 font-bold shadow-xs min-w-[120px] sm:min-w-[130px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
                         />
                         <span className="text-slate-400 font-medium">a</span>
                         <input
                           type="time"
                           value={h.hasta}
                           onChange={(e) => setHorarioDia(d.key, { hasta: e.target.value })}
-                          className="rounded-xl border border-white bg-white/90 px-2 py-1 text-xs text-slate-800 font-semibold shadow-xs"
+                          className="rounded-xl border border-slate-200/90 bg-white px-2.5 py-1.5 text-xs sm:text-sm text-slate-900 font-bold shadow-xs min-w-[120px] sm:min-w-[130px] outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
                         />
                       </div>
                     ) : (
