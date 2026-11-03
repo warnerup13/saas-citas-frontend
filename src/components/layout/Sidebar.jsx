@@ -7,6 +7,7 @@ import {
   Sparkles,
   Bot,
   ExternalLink,
+  Phone,
   ChevronLeft,
 } from "lucide-react";
 import { useBusiness } from "../../context/BusinessContext";
@@ -183,6 +184,37 @@ export default function Sidebar({ isMobileOpen, setIsMobileOpen }) {
           >
             <LogOut size={15} className="shrink-0" /> Cerrar Sesión
           </button>
+
+          {/* Tarjeta de Soporte y Contacto Desarrolladores */}
+          <div className="pt-2 border-t border-slate-100 mt-2 space-y-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block px-1">
+              Desarrollo & Soporte
+            </span>
+            <div className="bg-slate-50 rounded-xl p-2 border border-slate-200/70 space-y-1 text-[11px]">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-700">Josberly R.</span>
+                <a
+                  href="https://wa.me/584247437909"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-mono text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1"
+                >
+                  <Phone size={10} /> 0424-7437909
+                </a>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-700">Wainerth Y.</span>
+                <a
+                  href="https://wa.me/584147107631"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-mono text-emerald-600 hover:text-emerald-700 font-bold flex items-center gap-1"
+                >
+                  <Phone size={10} /> 0414-7107631
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </aside>
     </>

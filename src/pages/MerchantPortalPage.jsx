@@ -1993,6 +1993,48 @@ export default function MerchantPortalPage() {
 
       </main>
 
+      {/* Footer del Portal del Comercio */}
+      <footer className="mt-12 border-t border-slate-200/90 bg-white/70 backdrop-blur-xl py-6 px-4 sm:px-8">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+          <div>
+            <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
+              <Bot size={16} className="text-brand-600" />
+              <span className="font-display font-bold text-slate-800 text-sm">mycitas</span>
+              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">SaaS En Vivo</span>
+            </div>
+            <p className="text-xs text-slate-500">
+              Desarrollado y administrado por: <strong className="text-slate-800">Josberly Rodríguez</strong> & <strong className="text-slate-800">Wainerth Yépez</strong>
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+            <a
+              href="https://wa.me/584247437909"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 text-xs font-medium transition-all shadow-xs"
+              title="Contactar a Josberly Rodríguez"
+            >
+              <Phone size={12} className="text-emerald-600" />
+              <span>Josberly Rodríguez:</span>
+              <strong className="font-mono text-slate-900">0424-7437909</strong>
+            </a>
+
+            <a
+              href="https://wa.me/584147107631"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 text-xs font-medium transition-all shadow-xs"
+              title="Contactar a Wainerth Yépez"
+            >
+              <Phone size={12} className="text-emerald-600" />
+              <span>Wainerth Yépez:</span>
+              <strong className="font-mono text-slate-900">0414-7107631</strong>
+            </a>
+          </div>
+        </div>
+      </footer>
+
       {/* Modal para Crear / Editar Servicio */}
       {mostrarModalServicio && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">

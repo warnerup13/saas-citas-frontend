@@ -15,6 +15,7 @@ import {
   AlertCircle,
   X,
   KeyRound,
+  Phone,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
@@ -318,6 +319,36 @@ export default function LoginPage() {
             <Link to="/" className="hover:text-brand-600 transition-colors">
               Volver al Inicio
             </Link>
+          </div>
+
+          {/* Contacto Desarrolladores */}
+          <div className="mt-4 pt-3 border-t border-slate-100 text-center">
+            <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1.5">
+              Soporte & Activación de Negocios
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-600">
+              <a
+                href="https://wa.me/584247437909"
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-emerald-700 font-medium inline-flex items-center gap-1"
+              >
+                <Phone size={10} className="text-emerald-600" />
+                <span>Josberly:</span>
+                <strong className="font-mono text-slate-900">0424-7437909</strong>
+              </a>
+              <span className="text-slate-300">•</span>
+              <a
+                href="https://wa.me/584147107631"
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-emerald-700 font-medium inline-flex items-center gap-1"
+              >
+                <Phone size={10} className="text-emerald-600" />
+                <span>Wainerth:</span>
+                <strong className="font-mono text-slate-900">0414-7107631</strong>
+              </a>
+            </div>
           </div>
         </motion.div>
       </div>

@@ -279,18 +279,44 @@ export default function LandingPage() {
       </section>
 
       {/* Footer Estilo Nova Glass */}
-      <footer className="mt-8 sm:mt-12 border-t border-white/80 bg-white/40 backdrop-blur-xl py-6 sm:py-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 sm:px-6 sm:flex-row sm:items-center sm:justify-between text-center sm:text-left">
-          <div className="flex items-center justify-center sm:justify-start gap-2">
-            <Bot size={18} className="text-brand-600 shrink-0" />
-            <span className="font-display text-base sm:text-lg font-bold text-slate-900">
-              mycitas
-              {/* <span className="text-cyan-500">.glass</span> */} 
-            </span>
+      <footer className="mt-8 sm:mt-12 border-t border-slate-200/80 bg-white/60 backdrop-blur-xl py-6 sm:py-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 sm:px-6 sm:flex-row sm:items-center sm:justify-between text-center sm:text-left">
+          <div className="space-y-1">
+            <div className="flex items-center justify-center sm:justify-start gap-2">
+              <Bot size={18} className="text-brand-600 shrink-0" />
+              <span className="font-display text-base sm:text-lg font-bold text-slate-900">
+                mycitas
+              </span>
+            </div>
+            <p className="text-[11px] sm:text-xs text-slate-500">
+              Plataforma de automatización para WhatsApp & Google Calendar
+            </p>
           </div>
-          <p className="text-[11px] sm:text-xs text-slate-500">
-            Plataforma de IA para WhatsApp & Google Calendar 
-          </p>
+
+          <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-6 text-xs text-slate-600">
+            <span className="font-semibold text-slate-700">Contacto & Soporte:</span>
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+              <a
+                href="https://wa.me/584247437909"
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-brand-600 transition-colors inline-flex items-center gap-1 font-medium"
+              >
+                <span>Josberly Rodríguez:</span>
+                <strong className="text-slate-900">0424-7437909</strong>
+              </a>
+              <span className="hidden sm:inline text-slate-300">•</span>
+              <a
+                href="https://wa.me/584147107631"
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-brand-600 transition-colors inline-flex items-center gap-1 font-medium"
+              >
+                <span>Wainerth Yépez:</span>
+                <strong className="text-slate-900">0414-7107631</strong>
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
 
