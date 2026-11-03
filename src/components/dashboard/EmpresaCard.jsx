@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Building2, ChevronRight, CalendarOff, Phone, Scissors, CalendarCheck, MessageCircle, Share2 } from "lucide-react";
+import { Building2, ChevronRight, CalendarOff, Phone, Scissors, CalendarCheck, Bot, MessageCircle } from "lucide-react";
 import BotToggle from "../common/BotToggle";
 import ShareBusinessModal from "../common/ShareBusinessModal";
 import { fechaLarga } from "../../utils/formatters";
@@ -39,19 +39,19 @@ export default function EmpresaCard({ empresa, onToggle, onAbrir }) {
               </span>
             </div>
 
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1 text-xs text-slate-500">
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 sm:gap-x-3 gap-y-1.5 text-xs text-slate-500">
               <span className="flex items-center gap-1 font-medium">
                 <Scissors size={12} className="text-slate-400 shrink-0" />
                 <span className="truncate">{empresa.rubro}</span>
               </span>
-              <span className="flex items-center gap-1 font-medium" title="Número del Bot de WhatsApp">
-                <Phone size={12} className="text-slate-400 shrink-0" />
-                <span>{empresa.telefono}</span>
+              <span className="flex items-center gap-1 font-medium text-emerald-700 bg-emerald-50/80 px-2 py-0.5 rounded-lg border border-emerald-200/60 text-[11px]">
+                <Bot size={12} className="text-emerald-600 shrink-0" />
+                <span className="font-semibold">Bot: {empresa.telefonoBot || empresa.telefono}</span>
               </span>
-              {empresa.contact_phone && (
-                <span className="flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200/60 text-[11px]" title="Teléfono de contacto directo del dueño">
-                  <Phone size={11} className="text-emerald-600 shrink-0" />
-                  <span>Dueño: {empresa.contact_phone}</span>
+              {empresa.telefonoContacto && (
+                <span className="flex items-center gap-1 font-medium text-blue-700 bg-blue-50/80 px-2 py-0.5 rounded-lg border border-blue-200/60 text-[11px]">
+                  <Phone size={11} className="text-blue-600 shrink-0" />
+                  <span>Contacto: {empresa.telefonoContacto}</span>
                 </span>
               )}
               {empresa.googleCalendarEmail && (
@@ -62,7 +62,7 @@ export default function EmpresaCard({ empresa, onToggle, onAbrir }) {
               )}
               <span className="flex items-center gap-1 font-bold text-slate-700 text-[11px] sm:text-xs">
                 <CalendarCheck size={12} className="text-brand-500 shrink-0" />
-                <span>{empresa.citasSemana} citas esta semana</span>
+                <span>{empresa.citasSemana} citas</span>
               </span>
             </div>
           </div>

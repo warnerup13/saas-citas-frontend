@@ -1,29 +1,125 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { authService, API_CONFIG } from "../services";
+import { isTokenExpired, getTokenRemainingMs } from "../utils/tokenUtils";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
+  // Inicialización segura: valida que el token exista y NO esté expirado
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem(API_CONFIG.storageKeys.user);
     const token = localStorage.getItem(API_CONFIG.storageKeys.token);
-    const isAuth = localStorage.getItem(API_CONFIG.storageKeys.auth);
-    if (saved && (token || isAuth === "true")) {
+    const saved = localStorage.getItem(API_CONFIG.storageKeys.user);
+
+    if (!token || isTokenExpired(token)) {
+      authService.logout();
+      return null;
+    }
+
+    if (saved) {
       try {
         return JSON.parse(saved);
       } catch (e) {
+        authService.logout();
         return null;
       }
     }
+
     return null;
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const saved = localStorage.getItem(API_CONFIG.storageKeys.user);
     const token = localStorage.getItem(API_CONFIG.storageKeys.token);
-    const isAuth = localStorage.getItem(API_CONFIG.storageKeys.auth);
-    return !!saved && (token || isAuth === "true");
+    if (!token || isTokenExpired(token)) {
+      authService.logout();
+      return false;
+    }
+    const saved = localStorage.getItem(API_CONFIG.storageKeys.user);
+    return !!saved;
   });
+
+  const [sessionExpiredNotice, setSessionExpiredNotice] = useState(null);
+
+  /**
+   * Manejador centralizado de expiración de sesión
+   */
+  const handleSessionExpired = useCallback((notice = "Tu sesión ha expirado por seguridad. Por favor ingresa nuevamente.") => {
+    authService.logout();
+    setUser(null);
+    setIsAuthenticated(false);
+    setSessionExpiredNotice(notice);
+  }, []);
+
+  /**
+   * Cierre voluntario de sesión
+   */
+  const logout = useCallback(() => {
+    authService.logout();
+    setIsAuthenticated(false);
+    setUser(null);
+    setSessionExpiredNotice(null);
+  }, []);
+
+  /**
+   * Temporizador activo: cierra la sesión automáticamente en el momento exacto que el JWT expira
+   */
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const token = authService.getToken();
+    if (!token || isTokenExpired(token)) {
+      handleSessionExpired("Tu sesión ha expirado.");
+      return;
+    }
+
+    const remainingMs = getTokenRemainingMs(token);
+    if (remainingMs <= 0) {
+      handleSessionExpired("Tu sesión ha expirado.");
+      return;
+    }
+
+    // Programar expiración automática
+    const timer = setTimeout(() => {
+      handleSessionExpired("Tu sesión ha expirado por tiempo de inactividad o vencimiento del token.");
+    }, remainingMs);
+
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, user, handleSessionExpired]);
+
+  /**
+   * Detección de reactivación en móviles y cambio de visibilidad de pestaña:
+   * Al desbloquear el celular o volver al navegador, revisa inmediatamente si la sesión ya venció
+   */
+  useEffect(() => {
+    const checkSessionOnWakeup = () => {
+      if (document.visibilityState === "visible") {
+        const token = authService.getToken();
+        if (isAuthenticated && (!token || isTokenExpired(token))) {
+          handleSessionExpired("Tu sesión ha expirado mientras el dispositivo estaba en reposo.");
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", checkSessionOnWakeup);
+    window.addEventListener("focus", checkSessionOnWakeup);
+
+    return () => {
+      document.removeEventListener("visibilitychange", checkSessionOnWakeup);
+      window.removeEventListener("focus", checkSessionOnWakeup);
+    };
+  }, [isAuthenticated, handleSessionExpired]);
+
+  /**
+   * Escuchar eventos de sesión expirada emitidos por el interceptor de peticiones (401)
+   */
+  useEffect(() => {
+    const handleAuthExpiredEvent = (event) => {
+      const msg = event?.detail?.message || "Tu sesión ha expirado o las credenciales no son válidas.";
+      handleSessionExpired(msg);
+    };
+
+    window.addEventListener("auth:expired", handleAuthExpiredEvent);
+    return () => window.removeEventListener("auth:expired", handleAuthExpiredEvent);
+  }, [handleSessionExpired]);
 
   /**
    * Inicio de sesión real contra el backend REST (Soporta rol Admin y Comercio)
@@ -49,6 +145,7 @@ export function AuthProvider({ children }) {
       };
       setUser(userData);
       setIsAuthenticated(true);
+      setSessionExpiredNotice(null);
       localStorage.setItem(API_CONFIG.storageKeys.user, JSON.stringify(userData));
       localStorage.setItem(API_CONFIG.storageKeys.auth, "true");
       return { success: true, user: userData, token: data.token, role: "admin", message: data.message };
@@ -74,6 +171,7 @@ export function AuthProvider({ children }) {
       };
       setUser(userData);
       setIsAuthenticated(true);
+      setSessionExpiredNotice(null);
       localStorage.setItem(API_CONFIG.storageKeys.user, JSON.stringify(userData));
       localStorage.setItem(API_CONFIG.storageKeys.auth, "true");
       return { success: true, user: userData, token: data.token, role: "comercio", message: data.message };
@@ -93,6 +191,7 @@ export function AuthProvider({ children }) {
     };
     setUser(userData);
     setIsAuthenticated(true);
+    setSessionExpiredNotice(null);
     localStorage.setItem(API_CONFIG.storageKeys.user, JSON.stringify(userData));
     localStorage.setItem(API_CONFIG.storageKeys.auth, "true");
     return userData;
@@ -107,6 +206,7 @@ export function AuthProvider({ children }) {
     };
     setUser(userData);
     setIsAuthenticated(true);
+    setSessionExpiredNotice(null);
     localStorage.setItem(API_CONFIG.storageKeys.user, JSON.stringify(userData));
     localStorage.setItem(API_CONFIG.storageKeys.auth, "true");
     return userData;
@@ -120,11 +220,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
-    authService.logout();
-    setIsAuthenticated(false);
-    setUser(null);
-  };
+  const clearSessionExpiredNotice = () => setSessionExpiredNotice(null);
 
   const userRole = (user?.role || "").toLowerCase();
 
@@ -139,6 +235,8 @@ export function AuthProvider({ children }) {
         loginAsComercio,
         loginAsAdmin,
         logout,
+        sessionExpiredNotice,
+        clearSessionExpiredNotice,
         isComercio: userRole === "comercio" || userRole === "business",
         isAdmin: userRole === "admin",
       }}
@@ -155,4 +253,3 @@ export function useAuth() {
   }
   return context;
 }
-

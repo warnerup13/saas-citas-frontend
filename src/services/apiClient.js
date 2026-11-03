@@ -1,5 +1,6 @@
 import axios from "axios";
 import { API_CONFIG, getActiveBaseUrl } from "../config/apiConfig";
+import { isTokenExpired } from "../utils/tokenUtils";
 
 /**
  * Instancia central de Axios para todas las peticiones al backend
@@ -24,6 +25,28 @@ apiClient.interceptors.request.use(
     // Inyectar JWT token si existe en localStorage
     const token = localStorage.getItem(API_CONFIG.storageKeys.token);
     if (token) {
+      // Verificar si el token ya expiró antes de emitir la petición
+      if (isTokenExpired(token)) {
+        localStorage.removeItem(API_CONFIG.storageKeys.token);
+        localStorage.removeItem(API_CONFIG.storageKeys.auth);
+        localStorage.removeItem(API_CONFIG.storageKeys.user);
+
+        window.dispatchEvent(
+          new CustomEvent("auth:expired", {
+            detail: {
+              message: "Tu sesión ha vencido por seguridad. Por favor ingresa nuevamente.",
+            },
+          })
+        );
+
+        return Promise.reject({
+          message: "Sesión expirada. Por favor vuelve a iniciar sesión.",
+          status: 401,
+          isAuthError: true,
+          isNetworkError: false,
+        });
+      }
+
       config.headers.Authorization = `Bearer ${token}`;
     }
 
@@ -107,10 +130,25 @@ apiClient.interceptors.response.use(
   (error) => {
     const normalizedError = normalizeApiError(error);
 
-    // Si es 401 y hay token guardado, podemos limpiar la sesión si expiró
-    if (normalizedError.isAuthError && localStorage.getItem(API_CONFIG.storageKeys.token)) {
-      // Dejar que la capa UI / AuthContext gestione el logout o aviso
-      console.warn("Token JWT expirado o inválido:", normalizedError);
+    // Si es 401 (No autorizado o Token expirado)
+    if (normalizedError.isAuthError) {
+      console.warn("[apiClient] 401 detectado:", normalizedError.message);
+
+      const hadToken = !!localStorage.getItem(API_CONFIG.storageKeys.token);
+      localStorage.removeItem(API_CONFIG.storageKeys.token);
+      localStorage.removeItem(API_CONFIG.storageKeys.auth);
+      localStorage.removeItem(API_CONFIG.storageKeys.user);
+
+      if (hadToken) {
+        window.dispatchEvent(
+          new CustomEvent("auth:expired", {
+            detail: {
+              message: normalizedError.message || "Tu sesión ha expirado. Por favor ingresa nuevamente.",
+              endpoint: normalizedError.endpoint,
+            },
+          })
+        );
+      }
     }
 
     return Promise.reject(normalizedError);
