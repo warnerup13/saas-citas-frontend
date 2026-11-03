@@ -75,11 +75,11 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen text-slate-900 font-sans selection:bg-brand-500 selection:text-white pb-16 overflow-x-hidden">
-      
+
       {/* Header Estilo Nova Glass */}
       <header className="sticky top-0 z-40 border-b border-white/80 bg-white/75 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-3 sm:px-6 py-3 sm:py-3.5 gap-2">
-          
+
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <Link to="/" className="flex items-center gap-2 group">
               <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-400 text-white shadow-glow-blue transition-transform group-hover:scale-105">
@@ -87,7 +87,7 @@ export default function LandingPage() {
               </div>
               <span className="font-display text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
                 mycitas
-                
+
                 {/* <span className="text-cyan-500 font-normal">.glass</span> */}
               </span>
             </Link>
@@ -188,7 +188,7 @@ export default function LandingPage() {
       {/* ============================================================ */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
         <div className="grid gap-6 lg:grid-cols-12">
-          
+
           {/* Panel 1: Capacidades del Motor de IA */}
           <div className="lg:col-span-4 glass-panel p-5 sm:p-7">
             <div className="flex items-center gap-2 mb-4 sm:mb-6">
@@ -302,7 +302,7 @@ export default function LandingPage() {
                 rel="noreferrer"
                 className="hover:text-brand-600 transition-colors inline-flex items-center gap-1 font-medium"
               >
-                <span>Josberly Rodríguez:</span>
+                <span>Ing. Josberly Rodríguez:</span>
                 <strong className="text-slate-900">0424-7437909</strong>
               </a>
               <span className="hidden sm:inline text-slate-300">•</span>
@@ -312,7 +312,7 @@ export default function LandingPage() {
                 rel="noreferrer"
                 className="hover:text-brand-600 transition-colors inline-flex items-center gap-1 font-medium"
               >
-                <span>Wainerth Yépez:</span>
+                <span>Ing. Wainerth Yépez:</span>
                 <strong className="text-slate-900">0414-7107631</strong>
               </a>
             </div>
